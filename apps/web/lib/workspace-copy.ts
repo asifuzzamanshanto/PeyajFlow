@@ -13,6 +13,71 @@ export const roles: Record<Role, [string, string]> = {
 };
 
 const errors: Record<string, [string, string]> = {
+  voice_quantity_mismatch: [
+    "বক্তব্যের পরিমাণ অফারের পরিমাণের সঙ্গে মেলেনি।",
+    "The spoken quantity does not match the selected offer.",
+  ],
+  market_csv_header: [
+    "CSV-এর কলামের নাম নমুনার সঙ্গে মিলিয়ে দেখুন।",
+    "Use the CSV columns shown in the import form.",
+  ],
+  market_csv_limit: [
+    "১,০০০ সারি ও ৪০০ কেবির মধ্যে CSV দিন।",
+    "Use a CSV with up to 1,000 rows and 400 KB.",
+  ],
+  market_csv_malformed: [
+    "CSV ফাইল পড়া যায়নি।",
+    "The CSV file could not be read.",
+  ],
+  advice_market_mismatch: [
+    "মজুতের জেলা ও গ্রেডের খামারদর বেছে নিন।",
+    "Choose a farmgate series for this lot’s district and grade.",
+  ],
+  transport_responsibility_required: [
+    "যার পরিবহনের দায়িত্ব, তিনি কাজটি করতে পারবেন।",
+    "Only the party responsible for transport can do this.",
+  ],
+  logistics_pickup_window: [
+    "সংরক্ষণ ও সরবরাহের সময়ের মধ্যে সংগ্রহের দিন দিন।",
+    "Choose a pickup date within the reservation and delivery window.",
+  ],
+  logistics_insufficient_capacity: [
+    "গাড়ির ধারণক্ষমতা অর্ডারের চেয়ে কম।",
+    "The quoted capacity is below the order quantity.",
+  ],
+  logistics_quote_expired: [
+    "পরিবহনের দরটির মেয়াদ শেষ।",
+    "This transport quote has expired.",
+  ],
+  voice_repeat: [
+    "কাজটি বোঝা যায়নি। তালিকা থেকে কাজ বেছে নিয়ে আবার চেষ্টা করুন।",
+    "That command was not recognized. Choose a command and try again.",
+  ],
+  voice_choose_lot: ["একটি মজুত বেছে নিন।", "Choose a lot."],
+  voice_wrong_lot: [
+    "অফারটি এই মজুতের নয়।",
+    "The offer belongs to a different lot.",
+  ],
+  voice_call_expired: [
+    "কলের সময় শেষ। নতুন কল শুরু করুন।",
+    "The call expired. Start a new call.",
+  ],
+  voice_call_limit: [
+    "কলের সীমা পূর্ণ হয়েছে। নতুন কল শুরু করুন।",
+    "This call reached its turn limit. Start a new call.",
+  ],
+  voice_pending: [
+    "আগের কাজটি নিশ্চিত করুন অথবা কল শেষ করুন।",
+    "Confirm the pending action or end the call.",
+  ],
+  voice_confirmation_expired: [
+    "নিশ্চিতকরণের সময় শেষ বা বাতিল হয়েছে।",
+    "The confirmation expired or was cancelled.",
+  ],
+  voice_wrong_digits: [
+    "কোড মেলেনি। তিনবার ভুল হলে কাজটি বাতিল হবে।",
+    "The keypad code did not match. Three failures cancel the action.",
+  ],
   conversion_required: [
     "মণ হলে প্রতি মণে কেজি লিখুন।",
     "Enter kg per maund when using maunds.",

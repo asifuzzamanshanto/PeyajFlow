@@ -210,11 +210,21 @@ export async function SupplyPage({
     "minimum_kg",
     "verified_only",
     "request_id",
+    "preferred_district",
+    "price_assumption_bdt_kg",
+    "preferred_freight_bdt",
+    "other_freight_bdt",
   ]) {
     const input = value(key);
     if (input)
-      query.set(key, key === "minimum_kg" ? asciiDigits(input) : input);
+      query.set(
+        key,
+        key === "minimum_kg" || key.endsWith("_bdt") || key.endsWith("_bdt_kg")
+          ? asciiDigits(input)
+          : input,
+      );
   }
+  if (requestId) query.set("ranked", "true");
   query.set("offset", String(offset));
   const [result, demand] = await Promise.all([
     api<PageResult<Supply>>(`/v1/matches?${query}`),
@@ -232,6 +242,15 @@ export async function SupplyPage({
           <p>
             {local(locale, "চাহিদা অনুযায়ী ফল", "Matching demand")} ·{" "}
             {demand.variety} · {kg(locale, demand.quantity_kg)}
+          </p>
+        )}
+        {demand && (
+          <p>
+            {local(
+              locale,
+              "পূর্ণ চাহিদা আগে। দর দিলে প্রতি কেজির আনুমানিক খরচ, এরপর জেলা, যাচাই ও গ্রেডে সাজানো হয়।",
+              "Full coverage ranks first, followed by landed cost per kg when entered, preferred district, verification, and grade.",
+            )}
           </p>
         )}
         <form action={`${base}/supply`} method="get" className="work-form">
@@ -272,6 +291,53 @@ export async function SupplyPage({
               value={value("minimum_kg")}
               optional
             />
+            {demand && (
+              <>
+                <Field
+                  label={local(
+                    locale,
+                    "পছন্দের সংগ্রহ জেলা",
+                    "Preferred pickup district",
+                  )}
+                >
+                  <input
+                    name="preferred_district"
+                    maxLength={100}
+                    defaultValue={value("preferred_district")}
+                  />
+                </Field>
+                <DecimalField
+                  name="price_assumption_bdt_kg"
+                  label={local(
+                    locale,
+                    "ধরা পণ্যমূল্য (৳/কেজি)",
+                    "Assumed goods price (BDT/kg)",
+                  )}
+                  value={value("price_assumption_bdt_kg")}
+                  optional
+                />
+                <DecimalField
+                  name="preferred_freight_bdt"
+                  label={local(
+                    locale,
+                    "পছন্দের জেলার পরিবহন (৳)",
+                    "Freight for preferred district (BDT)",
+                  )}
+                  value={value("preferred_freight_bdt")}
+                  optional
+                />
+                <DecimalField
+                  name="other_freight_bdt"
+                  label={local(
+                    locale,
+                    "অন্য জেলার পরিবহন (৳)",
+                    "Freight for other districts (BDT)",
+                  )}
+                  value={value("other_freight_bdt")}
+                  optional
+                />
+              </>
+            )}
           </div>
           <label className="checkbox">
             <input
@@ -314,6 +380,31 @@ export async function SupplyPage({
                 ? local(locale, "যাচাইকৃত", "Verified")
                 : local(locale, "নিজস্ব প্রতিবেদন", "Self-reported")}
             </span>
+            {lot.coverage && (
+              <p>
+                {lot.coverage === "full"
+                  ? local(locale, "পূর্ণ চাহিদা", "Full coverage")
+                  : local(locale, "আংশিক চাহিদা", "Partial coverage")}{" "}
+                · {kg(locale, lot.matched_kg ?? "0")}
+                {lot.preferred_pickup
+                  ? local(locale, " · পছন্দের জেলা", " · Preferred district")
+                  : ""}
+              </p>
+            )}
+            {lot.estimate_basis &&
+              lot.estimated_landed_bdt &&
+              lot.estimated_landed_bdt_kg && (
+                <p>
+                  {local(
+                    locale,
+                    "আপনার ধরা মোট খরচ",
+                    "Your landed-cost estimate",
+                  )}{" "}
+                  · {taka(locale, lot.estimated_landed_bdt)} ·{" "}
+                  {taka(locale, lot.estimated_landed_bdt_kg)}/
+                  {local(locale, "কেজি", "kg")}
+                </p>
+              )}
             <Details label={local(locale, "অফার লিখুন", "Make an offer")}>
               <WorkspaceForm
                 locale={locale}

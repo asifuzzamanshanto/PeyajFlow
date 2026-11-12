@@ -2,7 +2,7 @@
 
 PeyajFlow is a Bangladesh-first onion supply-chain platform. The first milestone builds a traceable trade from a farmer's stock lot to a buyer's confirmed order, starting with the Pabna-to-Dhaka pilot.
 
-The bilingual pilot workspace supports sign-in with fictional accounts, stock and weight history, buyer demand, offers, reserved orders, photo inspections, human condition review, and storage-risk triage. See [work status](WORK_STATUS.md) for verification and remaining work. The [original handoff](PeyajFlow_Codex_Master_Handoff.md) is the product and architecture reference.
+The bilingual pilot workspace supports inventory and trading, photo inspections, market data and forecasts, hold/sell comparisons, transport quotes, and a Bangla call simulator. See [work status](WORK_STATUS.md) for verification and remaining work. The [original handoff](PeyajFlow_Codex_Master_Handoff.md) is the product and architecture reference.
 
 ## Run locally
 
@@ -36,6 +36,26 @@ uv run --env-file .env uvicorn app.main:app --reload
 2. Sign in as **Jalil** in a separate browser session and verify Rahim's stock. Jalil is assigned to Rahim's lots.
 3. Sign in as **Nadia**, create a demand, find matching supply, and make an offer for 200 kg. As Rahim, review and confirm the offer. Both sessions see the same order and Rahim's lot shows the reservation.
 4. As Rahim, submit a storage inspection with two to four photos and manual observations. As Jalil, review the evidence. Open **Storage risk** to see the reasons, missing evidence, and suggested inspection urgency.
+5. As the demo operator, use **Market imports** to stage a CSV, inspect provenance and skipped rows, and approve the observations. Use **Market prices** to review the data and the 7-, 14-, or 28-day outlook. Open **Hold or sell** from a lot to compare proceeds under explicit loss, freight, storage, financing, and fee assumptions.
+6. Use **Call simulator** as Rahim to accept a separate active offer. Select its lot and offer, review the Bangla terms, and enter the demo keypad code. The same order appears in the farmer and buyer workspaces. The party responsible for transport can request a quote from that order. The operator can record a quote received from a transporter, and the responsible party can select it.
+
+### Market imports, forecasts, and call simulation
+
+Use this CSV header in the displayed order:
+
+```csv
+observed_on,published_on,district,market,price_type,grade,unit,kg_per_maund,low,high,source_url,source_record
+```
+
+Use ISO dates, `farmgate`, `wholesale`, or `retail` for `price_type`, and `A`, `B`, `C`, or `ungraded` for `grade`. Use `kg` with an empty conversion field or `maund` with the source's recorded kg-per-maund conversion. Import in batches of up to 1,000 rows and 400 KB. Keep the source URL and report identifier, and preserve the original publication date for time-based evaluation. Mark fictional rows **Synthetic sample**. [Department of Agricultural Marketing price portal](https://market.dam.gov.bd/)
+
+For a fictional weekly farmgate series, run `docker compose exec api python -m app.seed_market`. A host-native API can use `uv run --env-file .env python -m app.seed_market`. The sample is explicit demo data and has its own price series.
+
+Forecast evaluation replays weekly origins using reports published by each origin. The service compares the last price, a rolling median, and a seasonal baseline where the history supports it. It displays absolute error, WAPE, empirical interval coverage, and pinball loss. The historical-change quantile candidate needs 24 comparable held-out origins, over 10% lower MAE, and 70–95% coverage to publish for a real series. Forecasts abstain with stale or insufficient evidence. These are retrospective checks. Field calibration and independent prospective evaluation remain pending.
+
+Hold/sell comparisons use local farmgate data for the lot's district and grade, verified-buyer offer terms when supplied, and explicit user assumptions. Freight ranking displays landed cost only when the buyer enters price and freight assumptions. A recorded transporter quote is the basis for the order's freight comparison and local booking record.
+
+The call simulator accepts typed Bangla commands and supports optional device Bangla playback. For example, `অফার গ্রহণ ২০০ কেজি` checks the stated quantity against the selected offer. Maunds use the selected lot's recorded conversion. A call lasts 10 minutes and a pending keypad challenge lasts up to 2 minutes. The challenge is bound to the exact action and cancellation or expiry leaves inventory unchanged. Inspection and support requests appear in the authorized operator or delegated agent's queue. Live carrier and speech-to-text work is tracked under F13.
 
 Demo accounts require `APP_ENV=development` or `test` together with `DEMO_MODE=true`. Production environments reject demo login and demo sessions. Live OTP enrollment requires a provider integration. Cookie security defaults to HTTPS. Set `APP_COOKIE_SECURE=false` for a local HTTP preview only.
 
@@ -59,4 +79,4 @@ uv run --locked pytest -q
 
 For API integration tests, set both `DATABASE_URL` and `TEST_DATABASE_URL` to a disposable PostgreSQL database. Run `uv run --locked alembic upgrade head`, `uv run --locked alembic check`, and `uv run --locked pytest -q` against it. Tests create fictional records and exercise concurrent transactions.
 
-With the seeded API and web workspace running against a disposable database, install Chromium with `pnpm --filter @peyajflow/web exec playwright-core install chromium` and run `pnpm test:e2e`. Set `E2E_WEB_ORIGIN` for a different port and `PLAYWRIGHT_CHANNEL=msedge` to use installed Edge. Set `E2E_SCREENSHOT_DIR` to capture visual evidence.
+With the seeded API and web workspace running against a disposable database, install Chromium with `pnpm --filter @peyajflow/web exec playwright-core install chromium` and run `pnpm test:e2e`. Use `E2E_WEB_ORIGIN` and `E2E_API_ORIGIN` to override the default loopback ports 3000 and 8000. Use `PLAYWRIGHT_CHANNEL=msedge` to run against installed Edge or `E2E_SCREENSHOT_DIR` to capture visual evidence.

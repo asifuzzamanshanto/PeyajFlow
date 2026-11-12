@@ -302,8 +302,7 @@ def list_lots(actor: Actor, db: DB, offset: Annotated[int, Query(ge=0)] = 0):
     return [view(row) for row in rows]
 
 
-@router.post("", response_model=LotView, status_code=201)
-def create_lot(body: LotCreate, actor: Actor, db: DB):
+def register_lot(body: LotCreate, actor: Profile, db: Session):
     require_role(actor, Role.FARMER)
     kg = kilograms(body.quantity, body.unit, body.kg_per_maund)
     request_hash = payload_hash(body)
@@ -355,8 +354,14 @@ def create_lot(body: LotCreate, actor: Actor, db: DB):
         kg_per_maund=body.kg_per_maund,
     )
     audit(db, actor, "lot.created", row["id"])
-    db.commit()
     return view(row)
+
+
+@router.post("", response_model=LotView, status_code=201)
+def create_lot(body: LotCreate, actor: Actor, db: DB):
+    result = register_lot(body, actor, db)
+    db.commit()
+    return result
 
 
 @router.get("/{lot_id}", response_model=LotDetail)
@@ -388,8 +393,7 @@ def edit_lot(lot_id: UUID, body: LotFields, actor: Actor, db: DB):
     return view(row)
 
 
-@router.post("/{lot_id}/movements", response_model=LotView)
-def move_lot(lot_id: UUID, body: Movement, actor: Actor, db: DB):
+def apply_movement(lot_id: UUID, body: Movement, actor: Profile, db: Session):
     require_role(actor, Role.FARMER, Role.AGENT)
     row = get_lot(db, actor, lot_id, lock=True)
     digest = payload_hash(body)
@@ -440,8 +444,14 @@ def move_lot(lot_id: UUID, body: Movement, actor: Actor, db: DB):
         kg_per_maund=body.kg_per_maund,
     )
     audit(db, actor, "lot.movement", lot_id, kind=body.event_type)
-    db.commit()
     return view(updated)
+
+
+@router.post("/{lot_id}/movements", response_model=LotView)
+def move_lot(lot_id: UUID, body: Movement, actor: Actor, db: DB):
+    result = apply_movement(lot_id, body, actor, db)
+    db.commit()
+    return result
 
 
 @router.post("/{lot_id}/verification", response_model=LotView)

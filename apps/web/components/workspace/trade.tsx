@@ -365,6 +365,9 @@ export async function OrderPage({
         {local(locale, "অর্ডারে ফিরুন", "Back to orders")}
       </Link>
       <h1>{local(locale, "অর্ডারের রসিদ", "Order receipt")}</h1>
+      <Link className="work-link" href={`${base}/orders/${id}/logistics`}>
+        {local(locale, "পরিবহন ও দর", "Transport and quotes")}
+      </Link>
       <section className="work-panel">
         <div className="work-row">
           <h2>{order.offer.lot_label}</h2>

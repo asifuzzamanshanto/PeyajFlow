@@ -23,6 +23,16 @@ Last updated November 12, 2026 (Asia/Dhaka).
 | F06 | Photo-quality checks with abstention, manual visible observations, owner corrections, and agent/operator review | Tests verify low-quality evidence and distinct submitted, corrected, and reviewed provenance |
 | F07 | Evidence-based storage-risk checklist with reason codes, stale and missing-data handling, and inspection urgency | API and rule tests cover review-driven risk, missing measurements, freshness, and threshold boundaries |
 
+### Market and call pilot F08–F12
+
+| Feature | Delivered | Local evidence |
+| --- | --- | --- |
+| F08 | Role-scoped CSV staging, row-level validation and deduplication, review and approval, source records, unit conversion, and stale/synthetic labels | PostgreSQL tests cover invalid and duplicate rows, approval visibility, access, original units, and provenance |
+| F09 | 7-, 14-, and 28-day forecasts with last-value, rolling-median and seasonal baselines, gated quantiles, and publication-aware backtests | Tests verify future-publication exclusion, sparse/stale abstention, baseline fallback and chronological evaluation |
+| F10 | Same-quantity sell-now and hold scenarios with price provenance, loss, transport, fees, storage, finance, and cash needs | Tests cover downside and upside math, negative proceeds, hypothetical abstention, and partial sales at a verified offer |
+| F11 | Ranked supply by coverage, user-entered landed costs, location, verification and grade. Persistent transport requests, recorded quotes and booking | PostgreSQL tests cover coverage ranking, landed costs, permission checks, capacity, replay and party visibility |
+| F12 | Bangla typed-command simulator with optional device playback, read-back, expiring keypad confirmation, order receipts, and an agent request queue | PostgreSQL tests cover unknown intents, wrong lot, stated kg/maund quantity, wrong digits, expiry, disconnect, replay, agent access, and the shared reservation |
+
 ## Verification and delivery
 
 | Check | Status |
@@ -37,6 +47,7 @@ Last updated November 12, 2026 (Asia/Dhaka).
 | Accessibility and visual review | Automated axe checks reported zero violations at 360 and 1440 px. Sampled text pairs measured at least 5.47:1. [Mobile](docs/design-reviews/foundation-360.png) and [desktop](docs/design-reviews/foundation-1440.png) screenshots |
 | Pilot API and database | Ten API tests passed with PostgreSQL 18.6. Alembic upgrade, rollback to the foundation, re-upgrade, and metadata-drift checks passed through `0007_offer_terms`. Ruff lint and formatting passed |
 | Pilot browser flow | Production Next.js build, lint, formatting, typecheck, and four web unit tests passed. Playwright verified the farmer, buyer, and agent workflow against the real API and PostgreSQL, with zero automated axe violations on the checked screens. [Desktop order receipt](docs/design-reviews/pilot-order-desktop.png) and [Bangla mobile risk](docs/design-reviews/pilot-risk-mobile.png) |
+| F08–F12 verification | Sixteen API tests, four web unit tests, and both Playwright workflows passed. The production build and migrations through `0010_voice` passed. Rollback to `0007_offer_terms`, re-upgrade, and Alembic metadata check passed on disposable PostgreSQL 18.6. Checked browser screens reported zero automated axe violations. [Price outlook](docs/design-reviews/pilot-price-outlook.png), [mobile call receipt](docs/design-reviews/pilot-voice-mobile.png), and [transport booking](docs/design-reviews/pilot-transport-quotes.png) |
 | GitHub PR and CI run | Pending an authorized remote |
 | Render and Vercel deployment | Pending later deployment work and authorized services |
 | Pilot and field validation | Pending working product workflows and pilot participants |
@@ -54,12 +65,12 @@ Last updated November 12, 2026 (Asia/Dhaka).
 | F05 | Inspection uploads and manual review | Implemented in the local pilot |
 | F06 | Visible-condition assessment with abstention and evidence | Implemented with manual observations and image-quality rules |
 | F07 | Storage-risk rules and missing-data handling | Implemented with a rule-based checklist |
-| F08 | Dated market observations, CSV import and data quality | Next |
-| F09 | Forecast baselines, temporal backtests and uncertainty | Pending F08 |
-| F10 | Hold/sell scenario comparisons and insufficient-data state | Pending F07–F09 |
-| F11 | Matching, landed cost and logistics quote workflow | Pending F04 |
-| F12 | Bangla call simulator with confirmation through the same order API | Pending F04 |
-| F13 | Live telephony adapter and verified carrier integration | Pending F12 and carrier access |
+| F08 | Dated market observations, CSV import and data quality | Implemented and verified locally |
+| F09 | Forecast baselines, temporal backtests and uncertainty | Implemented and verified locally. Real-series validation pending |
+| F10 | Hold/sell scenario comparisons and insufficient-data state | Implemented and verified locally |
+| F11 | Matching, landed cost and logistics quote workflow | Implemented and verified locally with recorded quotes |
+| F12 | Bangla call simulator with confirmation through the same order transaction | Implemented and verified locally in simulation |
+| F13 | Live telephony adapter and verified carrier integration | Next, subject to carrier access |
 | F14 | In-app alerts and optional SMS adapter | Pending transaction events |
 | F15 | Admin operations, provenance, audit and disputes | Pending core modules |
 | F16 | Responsive design, accessibility and localization across product routes | Pending workflow screens |
@@ -73,9 +84,11 @@ Last updated November 12, 2026 (Asia/Dhaka).
 - Private photo storage retains metadata-stripped JPEG evidence. The local adapter is verified. The S3-compatible adapter requires verification with a configured private bucket.
 - Image checks assess photo quality. Visible condition comes from human observations and reviews. Storage-risk rules are advisory thresholds, with field calibration and a trained classifier left for later evidence.
 - Early screens use the supplied raster. The owner vector master and field review of Bangla wording remain pending.
-- The first end-to-end workflow connects a farmer lot, one buyer offer, explicit acceptance, and a persisted stock reservation visible to both actors. Market intelligence and voice will build on those permissions and transaction rules.
+- Market forecasts use approved observations and original publication dates. The supplied sample is fictional and isolated by series. Forecast metrics are retrospective and real-series field validation is pending.
+- Matching uses explicit buyer assumptions and operators record quotes received from transporters. Booking is recorded in PeyajFlow. Carrier-side confirmation and tracking remain external.
+- The simulator uses typed commands and optional browser-provided Bangla playback. Web and simulated confirmations share the same transaction, and the simulator requires a demo session.
 - Update this file after each feature with what changed, checks that ran, remaining work, and confirmed PR or deployment evidence when available.
 
 ## Next implementation slice
 
-Start F08 with dated market observations, manual CSV import and review, and freshness labels. Preserve market type, locality, units, source, and synthetic status before adding forecasting.
+F13 adds the carrier adapter and verifies provider-authenticated callbacks. It requires an approved provider and carrier access. The local F12 simulator remains the repeatable acceptance path.

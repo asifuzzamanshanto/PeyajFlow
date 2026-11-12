@@ -10,7 +10,19 @@ from pydantic import BaseModel
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import auth, demand, inspection, lots, risk, trade
+from app import (
+    advice,
+    auth,
+    demand,
+    forecast,
+    inspection,
+    logistics,
+    lots,
+    market_data,
+    risk,
+    trade,
+    voice,
+)
 from app.database import alembic_config, database_engine
 from app.database import metadata as metadata
 
@@ -86,6 +98,11 @@ app.include_router(demand.router)
 app.include_router(trade.router)
 app.include_router(inspection.router)
 app.include_router(risk.router)
+app.include_router(market_data.router)
+app.include_router(forecast.router)
+app.include_router(advice.router)
+app.include_router(logistics.router)
+app.include_router(voice.router)
 
 
 @app.get("/health/live", response_model=Liveness, tags=["Health"])

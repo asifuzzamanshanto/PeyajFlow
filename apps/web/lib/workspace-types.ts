@@ -36,6 +36,12 @@ export type Supply = {
   grade: Grade;
   sellable_kg: string;
   verification: "verified" | "self_reported";
+  matched_kg?: string;
+  coverage?: "full" | "partial";
+  preferred_pickup?: boolean;
+  estimated_landed_bdt?: string | null;
+  estimated_landed_bdt_kg?: string | null;
+  estimate_basis?: "buyer_assumptions" | null;
 };
 export type Demand = {
   id: string;

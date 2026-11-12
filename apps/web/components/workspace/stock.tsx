@@ -279,6 +279,9 @@ export async function LotPage({
           <Link className="work-link" href={`${base}/stock/${id}/risk`}>
             {local(locale, "সংরক্ষণের ঝুঁকি", "Storage risk")}
           </Link>
+          <Link className="work-link" href={`${base}/stock/${id}/advice`}>
+            {local(locale, "অপেক্ষা নাকি বিক্রি", "Hold or sell")}
+          </Link>
         </div>
       </section>
       {actor.role === "farmer" && (

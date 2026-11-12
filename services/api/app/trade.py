@@ -416,8 +416,7 @@ def read_offer(offer_id: UUID, actor: Actor, db: DB):
     return OfferDetail(**offer_view(offer).model_dump(), activity=activity)
 
 
-@router.post("/offers", response_model=OfferView, status_code=201)
-def create_offer(body: OfferInput, actor: Actor, db: DB):
+def send_offer(body: OfferInput, actor: Profile, db: Session):
     require_role(actor, Role.BUYER)
     digest = payload_hash(body)
     existing = select(offers).where(
@@ -516,6 +515,12 @@ def create_offer(body: OfferInput, actor: Actor, db: DB):
         actor,
         terms=result,
     )
+    return result
+
+
+@router.post("/offers", response_model=OfferView, status_code=201)
+def create_offer(body: OfferInput, actor: Actor, db: DB):
+    result = send_offer(body, actor, db)
     db.commit()
     return result
 
@@ -551,8 +556,7 @@ def accept_offer(
     return order_id
 
 
-@router.post("/offers/{offer_id}/respond", response_model=Receipt)
-def respond(offer_id: UUID, body: OfferReply, actor: Actor, db: DB):
+def respond_to_offer(offer_id: UUID, body: OfferReply, actor: Profile, db: Session):
     require_role(actor, Role.FARMER, Role.BUYER)
     offer = scoped_offer(db, actor, offer_id, lock=True)
     receipt = replay(db, "offer", offer_id, actor, body)
@@ -608,6 +612,12 @@ def respond(offer_id: UUID, body: OfferReply, actor: Actor, db: DB):
         id=offer_id, status=status, version=body.version + 1, order_id=order_id
     )
     journal(db, "offer", result, status, actor, body, terms=offer_view(updated))
+    return result
+
+
+@router.post("/offers/{offer_id}/respond", response_model=Receipt)
+def respond(offer_id: UUID, body: OfferReply, actor: Actor, db: DB):
+    result = respond_to_offer(offer_id, body, actor, db)
     db.commit()
     return result
 

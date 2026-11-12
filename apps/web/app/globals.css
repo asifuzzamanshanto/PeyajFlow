@@ -543,3 +543,56 @@ h1:lang(bn) {
 .risk-heading {
   margin-top: 10px;
 }
+
+.pilot-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: 14px;
+}
+.pilot-table table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+.pilot-table th,
+.pilot-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 9px 12px;
+  text-align: start;
+  vertical-align: top;
+}
+.pilot-table th {
+  color: var(--plum);
+}
+.pilot-table small {
+  display: block;
+  color: var(--secondary);
+}
+.pilot-table .work-link {
+  min-height: 30px;
+}
+.pilot-csv {
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  background: var(--canvas);
+}
+.pilot-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  gap: 6px;
+}
+.pilot-secondary {
+  min-height: 44px;
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 10px;
+  color: var(--deep);
+  background: var(--paper);
+  cursor: pointer;
+}
+.pilot-secondary:hover {
+  background: var(--lavender);
+}

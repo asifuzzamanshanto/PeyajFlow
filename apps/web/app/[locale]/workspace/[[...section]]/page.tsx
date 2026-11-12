@@ -2,6 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandLogo } from "../../../../components/brand-logo";
+import { AdvicePage } from "../../../../components/workspace/advice";
+import { LogisticsPage } from "../../../../components/workspace/logistics";
+import {
+  ImportsPage,
+  PricePage,
+} from "../../../../components/workspace/prices";
+import { VoicePage } from "../../../../components/workspace/voice";
 import { Details, Field } from "../../../../components/workspace/fields";
 import { WorkspaceForm } from "../../../../components/workspace/form";
 import {
@@ -51,6 +58,11 @@ function destinations(locale: Locale, actor: Profile) {
       ["offers", local(locale, "অফার", "Offers")],
       ["orders", local(locale, "অর্ডার", "Orders")],
     );
+  pages.push(["prices", local(locale, "বাজারদর", "Market prices")]);
+  if (actor.role === "admin")
+    pages.push(["imports", local(locale, "দর আমদানি", "Market imports")]);
+  if (actor.is_demo)
+    pages.push(["voice", local(locale, "কল সিমুলেটর", "Call simulator")]);
   return pages;
 }
 
@@ -168,13 +180,19 @@ async function panel(
     if (page === "supply") return SupplyPage({ ...context, filters });
     if (page === "offers") return OffersPage(context);
     if (page === "orders") return OrdersPage(context);
+    if (page === "prices") return PricePage({ ...context, filters });
   }
+  if (page === "imports" && !child) return ImportsPage({ ...context, id });
+  if (page === "voice" && !child) return VoicePage({ ...context, id });
   if (id && page === "stock") {
     if (!child) return LotPage({ ...context, id });
     if (child === "inspections") return InspectionsPage({ ...context, id });
     if (child === "risk") return RiskPage({ ...context, id });
+    if (child === "advice") return AdvicePage({ ...context, id });
   }
   if (id && page === "orders" && !child) return OrderPage({ ...context, id });
+  if (id && page === "orders" && child === "logistics")
+    return LogisticsPage({ ...context, id });
   if (id && page === "offers" && !child)
     return OfferHistoryPage({ ...context, id });
   notFound();

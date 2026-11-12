@@ -93,6 +93,12 @@ class SupplyView(BaseModel):
     grade: Grade
     sellable_kg: Decimal
     verification: Literal["verified", "self_reported"]
+    matched_kg: Decimal | None = None
+    coverage: Literal["full", "partial"] | None = None
+    preferred_pickup: bool | None = None
+    estimated_landed_bdt: Decimal | None = None
+    estimated_landed_bdt_kg: Decimal | None = None
+    estimate_basis: Literal["buyer_assumptions"] | None = None
 
 
 class SupplyPage(BaseModel):
@@ -195,7 +201,7 @@ def read_demand(request_id: UUID, actor: Actor, db: DB):
     return DemandView.model_validate(demand_for(db, actor, request_id))
 
 
-@router.get("/matches", response_model=SupplyPage)
+@router.get("/matches", response_model=SupplyPage, response_model_exclude_unset=True)
 def browse_supply(
     actor: Actor,
     db: DB,
@@ -206,8 +212,18 @@ def browse_supply(
     verified_only: bool = False,
     request_id: UUID | None = None,
     offset: Annotated[int, Query(ge=0)] = 0,
+    ranked: bool = False,
+    preferred_district: Annotated[str | None, Query(max_length=100)] = None,
+    price_assumption_bdt_kg: BDT | None = None,
+    preferred_freight_bdt: Annotated[
+        Decimal | None, Query(ge=0, max_digits=12, decimal_places=2)
+    ] = None,
+    other_freight_bdt: Annotated[
+        Decimal | None, Query(ge=0, max_digits=12, decimal_places=2)
+    ] = None,
 ):
     require_role(actor, Role.BUYER)
+    demand = None
     if request_id is not None:
         demand = demand_for(db, actor, request_id)
         if demand["status"] != "open" or demand["delivery_to"] < today():
@@ -233,6 +249,45 @@ def browse_supply(
         filters.append(sale_stock >= minimum_kg)
     if verified_only:
         filters.append(verified_stock)
+    extras = []
+    ordering = [verified_stock.desc(), sale_stock.desc(), lots.c.id]
+    if ranked and demand is not None:
+        wanted = demand["quantity_kg"]
+        matched = func.least(sale_stock, wanted)
+        full = sale_stock >= wanted
+        preferred = (
+            func.lower(lots.c.district) == (preferred_district or "").strip().lower()
+        )
+        grade_rank = case(GRADE_RANK, value=lots.c.grade, else_=0)
+        ordering = [
+            full.desc(),
+            preferred.desc(),
+            verified_stock.desc(),
+            grade_rank.desc(),
+            matched.desc(),
+            lots.c.id,
+        ]
+        extras = [
+            matched.label("matched_kg"),
+            case((full, "full"), else_="partial").label("coverage"),
+            preferred.label("preferred_pickup"),
+        ]
+        if price_assumption_bdt_kg is not None and (
+            preferred_freight_bdt is not None or other_freight_bdt is not None
+        ):
+            freight = case((preferred, preferred_freight_bdt), else_=other_freight_bdt)
+            total = matched * price_assumption_bdt_kg + freight
+            unit_cost = total / matched
+            ordering.insert(1, unit_cost.asc().nulls_last())
+            extras.extend(
+                [
+                    func.round(total, 2).label("estimated_landed_bdt"),
+                    func.round(unit_cost, 2).label("estimated_landed_bdt_kg"),
+                    case((total.is_not(None), "buyer_assumptions")).label(
+                        "estimate_basis"
+                    ),
+                ]
+            )
     rows = (
         db.execute(
             select(
@@ -244,9 +299,10 @@ def browse_supply(
                 case((verified_stock, "verified"), else_="self_reported").label(
                     "verification"
                 ),
+                *extras,
             )
             .where(*filters)
-            .order_by(verified_stock.desc(), sale_stock.desc(), lots.c.id)
+            .order_by(*ordering)
             .offset(offset)
             .limit(PAGE_SIZE + 1)
         )
