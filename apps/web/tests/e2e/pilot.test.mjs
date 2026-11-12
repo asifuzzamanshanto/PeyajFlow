@@ -1,0 +1,273 @@
+import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import test from "node:test";
+import AxeBuilder from "@axe-core/playwright";
+import { chromium } from "playwright-core";
+
+const origin = process.env.E2E_WEB_ORIGIN ?? "http://127.0.0.1:3000";
+const base = `${origin}/en/workspace`;
+const output = process.env.E2E_SCREENSHOT_DIR;
+
+async function signIn(browser, identity, viewport) {
+  const context = await browser.newContext({ viewport });
+  const page = await context.newPage();
+  await page.goto(base);
+  await page.getByLabel("Account", { exact: true }).selectOption(identity);
+  await page.getByRole("button", { name: "Open workspace" }).click();
+  await page.getByRole("heading", { name: "Workspace", exact: true }).waitFor();
+  assert.equal(
+    (await page.context().cookies()).find(
+      (cookie) => cookie.name === "peyajflow_session",
+    )?.httpOnly,
+    true,
+  );
+  return page;
+}
+
+async function open(scope, text) {
+  const summary = scope.locator("summary").filter({ hasText: text });
+  await summary.click();
+  return summary.locator("xpath=..");
+}
+
+async function checkViewport(page, filename) {
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+  );
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+    .analyze();
+  assert.deepEqual(
+    result.violations.map(({ id, nodes }) => [
+      id,
+      nodes.map(({ target }) => target),
+    ]),
+    [],
+  );
+  if (output) {
+    await mkdir(output, { recursive: true });
+    await page.screenshot({
+      path: path.join(output, filename),
+      fullPage: true,
+    });
+  }
+}
+
+test(
+  "farmer, buyer and agent share the persisted pilot workflow",
+  { timeout: 150_000 },
+  async () => {
+    const browser = await chromium.launch({
+      channel: process.env.PLAYWRIGHT_CHANNEL,
+    });
+    try {
+      const suffix = Date.now().toString(36);
+      const lotName = `Pilot lot ${suffix}`;
+      const variety = `Taherpuri ${suffix}`;
+      const farmer = await signIn(browser, "farmer", {
+        width: 390,
+        height: 844,
+      });
+      const buyer = await signIn(browser, "buyer", {
+        width: 1280,
+        height: 900,
+      });
+      const agent = await signIn(browser, "agent", {
+        width: 1280,
+        height: 900,
+      });
+
+      await farmer
+        .getByRole("navigation")
+        .getByRole("link", { name: "My stock" })
+        .click();
+      const register = await open(farmer, "Register a lot");
+      await register.getByLabel("Lot name").fill(lotName);
+      await register.getByLabel("Variety").fill(variety);
+      await register.getByLabel("Storage type").fill("Ventilated shed");
+      await register.getByLabel("Grade", { exact: true }).selectOption("A");
+      await register.getByLabel("List this lot for buyers").check();
+      await register.getByLabel("Quantity", { exact: true }).fill("২৫");
+      await register.getByLabel("Unit", { exact: true }).selectOption("maund");
+      await register.getByRole("button", { name: "Save lot" }).click();
+      const error = register.getByRole("alert");
+      await error.waitFor();
+      assert.equal(
+        await error.textContent(),
+        "Enter kg per maund when using maunds.",
+      );
+      assert.equal(await register.getByLabel("Lot name").inputValue(), lotName);
+      await register.getByLabel("If using maunds, kg per maund").fill("৪০");
+      await register.getByRole("button", { name: "Save lot" }).click();
+      await farmer.getByRole("heading", { name: lotName }).waitFor();
+      const lotPath = new URL(farmer.url()).pathname;
+      assert.match(lotPath, /\/stock\/[0-9a-f-]+$/);
+      await farmer.getByText("Initial quantity · 1,000 kg").waitFor();
+
+      await agent.goto(`${origin}${lotPath}`);
+      const verify = await open(agent, "Verify measured stock");
+      await verify.getByLabel("Verified kg").fill("900");
+      await verify.getByRole("button", { name: "Save verification" }).click();
+      await agent.getByText("900 kg", { exact: true }).waitFor();
+
+      await buyer
+        .getByRole("navigation")
+        .getByRole("link", { name: "Demand" })
+        .click();
+      const demand = await open(buyer, "Create a demand");
+      await demand.getByLabel("Quantity needed (kg)").fill("200");
+      await demand.getByLabel("Variety").fill(variety);
+      await demand.getByLabel("Minimum grade").selectOption("B");
+      const delivery = await demand
+        .getByLabel("Earliest delivery date")
+        .inputValue();
+      await demand.getByLabel("Latest delivery date").fill(delivery);
+      await demand.getByLabel("Maximum price (BDT/kg), optional").fill("50");
+      await demand.getByRole("button", { name: "Save demand" }).click();
+      await buyer
+        .getByRole("heading", { name: `${variety} · 200 kg` })
+        .waitFor();
+      await buyer
+        .locator("article")
+        .filter({ hasText: variety })
+        .getByRole("link", { name: "Find matching supply" })
+        .click();
+      await buyer.getByRole("heading", { name: "Browse supply" }).waitFor();
+      const eligible = buyer.locator("article").filter({ hasText: variety });
+      await eligible.getByText("Verified", { exact: true }).waitFor();
+      const offer = await open(eligible, "Make an offer");
+      assert.equal(
+        await offer.getByLabel("Quantity (kg)").inputValue(),
+        "200.000",
+      );
+      await offer.getByLabel("Price (BDT/kg)").fill("45");
+      await offer.getByRole("button", { name: "Send offer" }).click();
+      await buyer
+        .getByRole("heading", { name: "Offers", exact: true })
+        .waitFor();
+      await buyer
+        .locator("article")
+        .filter({ hasText: lotName })
+        .getByText("Sent", { exact: true })
+        .waitFor();
+      await buyer
+        .locator("article")
+        .filter({ hasText: lotName })
+        .getByRole("link", { name: "Offer history" })
+        .click();
+      await buyer.getByRole("heading", { name: "Offer history" }).waitFor();
+      await buyer.getByText("200 kg · ৳45.00/kg", { exact: true }).waitFor();
+
+      await farmer
+        .getByRole("navigation")
+        .getByRole("link", { name: "Offers" })
+        .click();
+      const incoming = farmer.locator("article").filter({ hasText: lotName });
+      const accept = await open(incoming, "Accept offer");
+      await accept
+        .getByLabel("I reviewed the terms and confirm the stock reservation.")
+        .check();
+      await accept.getByRole("button", { name: "Accept offer" }).click();
+      await farmer.getByRole("heading", { name: "Order receipt" }).waitFor();
+      const orderPath = new URL(farmer.url()).pathname;
+      await buyer.goto(`${origin}${orderPath}`);
+      await buyer.getByRole("heading", { name: "Order receipt" }).waitFor();
+      assert.equal(
+        await buyer.getByText("৳9,000.00", { exact: true }).count(),
+        1,
+      );
+      await checkViewport(buyer, "pilot-order-desktop.png");
+      await farmer.goto(`${origin}${lotPath}`);
+      await farmer.getByText("800 kg", { exact: true }).waitFor();
+      await farmer.getByText("200 kg", { exact: true }).first().waitFor();
+
+      await farmer.getByRole("link", { name: "Storage risk" }).click();
+      await farmer
+        .getByRole("heading", { name: "Insufficient evidence" })
+        .waitFor();
+      await farmer.getByRole("link", { name: "View inspections" }).click();
+      const inspection = await open(farmer, "New inspection");
+      await inspection
+        .getByLabel("Curing", { exact: true })
+        .selectOption("cured");
+      await inspection
+        .getByLabel("Ventilation", { exact: true })
+        .selectOption("poor");
+      await inspection
+        .getByLabel("Surface moisture", { exact: true })
+        .selectOption("dry");
+      await inspection
+        .getByLabel("Odor", { exact: true })
+        .selectOption("normal");
+      await inspection
+        .getByLabel("Uncertain evidence", { exact: true })
+        .check();
+      const png = await farmer.evaluate(() => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 64;
+        return canvas.toDataURL("image/png").split(",")[1];
+      });
+      const buffer = Buffer.from(png, "base64");
+      await inspection.getByLabel("2–4 photos, up to 3 MiB each").setInputFiles(
+        ["overview.png", "closeup.png"].map((name) => ({
+          name,
+          mimeType: "image/png",
+          buffer,
+        })),
+      );
+      await inspection
+        .getByLabel(
+          "I consent to storing these photos for authorized inspection and review.",
+        )
+        .check();
+      await inspection
+        .getByRole("button", { name: "Submit inspection" })
+        .click();
+      await farmer
+        .getByText("Photo quality check · Uncertain evidence")
+        .waitFor();
+      const image = farmer.getByRole("img", { name: "Inspection photo 1" });
+      await image.waitFor();
+      const photoUrl = await image.getAttribute("src");
+      assert.equal(
+        (await farmer.request.get(`${origin}${photoUrl}`)).status(),
+        200,
+      );
+      assert.equal(
+        (await buyer.request.get(`${origin}${photoUrl}`)).status(),
+        403,
+      );
+      await agent.goto(`${origin}${lotPath}/inspections`);
+      const review = await open(agent, "Review photos");
+      await review.getByLabel("Visible rot or mold", { exact: true }).check();
+      await review.getByLabel("Reason").fill("Fictional pilot review");
+      await review.getByRole("button", { name: "Save review" }).click();
+      await agent.getByText("Human review", { exact: true }).first().waitFor();
+      await farmer.goto(`${origin}${lotPath}/risk`);
+      await farmer.getByRole("heading", { name: "High concern" }).waitFor();
+      await farmer.getByText("Visible rot or mold was reported.").waitFor();
+      await farmer.getByRole("link", { name: "বাংলা" }).click();
+      await farmer.waitForURL((url) => url.pathname.startsWith("/bn/"));
+      assert.equal(await farmer.locator("html").getAttribute("lang"), "bn");
+      await farmer.getByRole("heading", { name: "উচ্চ সতর্কতা" }).waitFor();
+      await checkViewport(farmer, "pilot-risk-mobile.png");
+      await farmer.goto(base);
+      await farmer.getByRole("button", { name: "Sign out" }).click();
+      await farmer
+        .getByRole("heading", { name: "Sign in", exact: true })
+        .waitFor();
+      assert.equal(
+        (await farmer.context().cookies()).some(
+          (cookie) => cookie.name === "peyajflow_session",
+        ),
+        false,
+      );
+    } finally {
+      await browser.close();
+    }
+  },
+);

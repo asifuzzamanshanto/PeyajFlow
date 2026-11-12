@@ -26,7 +26,14 @@ services:
 
   api:
     build: ./services/api
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      APP_ENV: development
+      DEMO_MODE: "true"
+      PHOTO_STORAGE: local
+      PHOTO_DIR: /var/lib/peyajflow/photos
+    volumes:
+      - inspection-photos:/var/lib/peyajflow/photos
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
@@ -35,3 +42,4 @@ services:
 
 volumes:
   postgres-data:
+  inspection-photos:

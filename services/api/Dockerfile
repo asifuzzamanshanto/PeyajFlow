@@ -12,7 +12,8 @@ COPY alembic.ini ./
 COPY migrations migrations
 COPY app app
 
-RUN useradd --system --uid 10001 peyajflow
+RUN useradd --system --uid 10001 peyajflow \
+    && install -d -o peyajflow -g peyajflow /var/lib/peyajflow/photos
 USER peyajflow
 EXPOSE 8000
 CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\""]

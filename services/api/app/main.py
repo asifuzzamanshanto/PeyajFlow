@@ -1,5 +1,6 @@
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from enum import StrEnum
 
 from alembic.runtime.migration import MigrationContext
@@ -9,7 +10,9 @@ from pydantic import BaseModel
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
+from app import auth, demand, inspection, lots, risk, trade
 from app.database import alembic_config, database_engine
+from app.database import metadata as metadata
 
 
 class DatabaseStatus(StrEnum):
@@ -46,6 +49,12 @@ def check_database(
     return DatabaseStatus.READY
 
 
+async def expire_reservations(engine: Engine) -> None:
+    while True:
+        await asyncio.sleep(20)
+        await asyncio.to_thread(trade.sweep_expired, engine)
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     heads = frozenset(ScriptDirectory.from_config(alembic_config()).get_heads())
@@ -55,14 +64,28 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     engine = database_engine()
     application.state.database_engine = engine
     application.state.migration_heads = heads
+    expiry = (
+        asyncio.create_task(expire_reservations(engine)) if engine is not None else None
+    )
     try:
         yield
     finally:
+        if expiry is not None:
+            expiry.cancel()
+            with suppress(asyncio.CancelledError):
+                await expiry
         if engine is not None:
             engine.dispose()
 
 
 app = FastAPI(title="PeyajFlow API", version="0.1.0", lifespan=lifespan)
+app.add_middleware(inspection.InspectionUploadLimit)
+app.include_router(auth.router)
+app.include_router(lots.router)
+app.include_router(demand.router)
+app.include_router(trade.router)
+app.include_router(inspection.router)
+app.include_router(risk.router)
 
 
 @app.get("/health/live", response_model=Liveness, tags=["Health"])

@@ -303,3 +303,243 @@ h1:lang(bn) {
     padding: 18px;
   }
 }
+
+.work-shell {
+  min-height: 100dvh;
+}
+.work-header {
+  align-items: center;
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding: 8px clamp(12px, 4vw, 56px);
+}
+.work-header-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.work-nav {
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 5px clamp(12px, 4vw, 56px);
+}
+.work-nav a {
+  align-items: center;
+  border-radius: 6px;
+  color: var(--deep);
+  display: inline-flex;
+  font-weight: 630;
+  min-height: 44px;
+  padding: 6px 12px;
+}
+.work-nav a:hover,
+.work-nav a[aria-current="page"] {
+  background: var(--lavender);
+}
+.work-main {
+  max-width: 1216px;
+  margin-inline: auto;
+  padding: 32px clamp(16px, 4vw, 48px) 64px;
+}
+.work-main h1 {
+  font-size: clamp(1.85rem, 4vw, 2.8rem);
+}
+.work-main h2 {
+  font-size: 1.25rem;
+  font-weight: 680;
+  color: var(--plum);
+}
+.work-panel {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-block: 12px;
+  padding: clamp(16px, 3vw, 26px);
+  overflow-wrap: anywhere;
+}
+.work-panel p {
+  margin-top: 6px;
+}
+.work-sign-in {
+  max-width: 520px;
+  margin: 24px auto;
+}
+.work-profile,
+.work-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.work-profile {
+  justify-content: space-between;
+}
+.work-tag {
+  display: inline-block;
+  color: var(--deep);
+  background: var(--lavender);
+  border-radius: 5px;
+  font-size: 0.85rem;
+  padding: 4px 8px;
+}
+.work-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.content > .work-link {
+  margin-bottom: 12px;
+}
+.work-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  justify-items: start;
+  width: 100%;
+}
+.work-profile > .work-form {
+  width: auto;
+  margin: 0;
+}
+.work-form label {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  font-weight: 550;
+}
+.work-field {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+.work-form input:not([type="checkbox"]),
+.work-form select,
+.work-form textarea {
+  min-height: 44px;
+  border: 1px solid #a89bad;
+  border-radius: 7px;
+  padding: 8px 10px;
+  width: 100%;
+  min-width: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 400;
+}
+.work-form .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+  flex-shrink: 0;
+}
+.work-grid,
+.work-cards,
+.work-metrics {
+  display: grid;
+  gap: 12px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr));
+  width: 100%;
+}
+.work-cards {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+}
+.work-cards > .work-panel {
+  margin: 0;
+}
+.work-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  margin-block: 12px;
+}
+.work-metrics dt {
+  font-size: 0.88rem;
+  color: var(--secondary);
+}
+.work-metrics dd {
+  font-weight: 630;
+}
+.work-details {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.work-panel > .work-details:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+.work-details summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 10px;
+  color: var(--deep);
+  font-weight: 650;
+}
+.work-details[open] {
+  padding-bottom: 12px;
+}
+.work-history {
+  margin-top: 10px;
+}
+.work-history li {
+  border-top: 1px solid var(--border);
+  padding-block: 10px;
+  display: grid;
+  gap: 2px;
+}
+.work-history time {
+  color: var(--secondary);
+}
+.work-options {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.work-options legend {
+  color: var(--deep);
+  font-weight: 650;
+  padding-inline: 4px;
+}
+.work-photo {
+  margin-top: 12px;
+}
+.work-photo img {
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+  object-fit: contain;
+  background: var(--canvas);
+  border-radius: 6px;
+}
+.work-photo figcaption {
+  font-size: 0.85rem;
+  color: var(--secondary);
+  padding-top: 4px;
+}
+.work-feedback {
+  color: #1e653c;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+.form-error {
+  color: #9a2037;
+  font-weight: 600;
+}
+.work-bullets {
+  list-style: disc;
+  margin: 10px 0 10px 20px;
+}
+.risk-heading {
+  margin-top: 10px;
+}

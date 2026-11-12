@@ -1,11 +1,26 @@
 import os
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Annotated
 
 from alembic.config import Config
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy import Engine, MetaData, create_engine, make_url
+from sqlalchemy.orm import Session
 
 API_ROOT = Path(__file__).resolve().parents[1]
 metadata = MetaData()
+
+
+def database(request: Request) -> Iterator[Session]:
+    engine = request.app.state.database_engine
+    if engine is None:
+        raise HTTPException(503, "database_unavailable")
+    with Session(engine) as session:
+        yield session
+
+
+DB = Annotated[Session, Depends(database)]
 
 
 def alembic_config() -> Config:

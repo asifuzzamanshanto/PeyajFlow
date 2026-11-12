@@ -12,6 +12,7 @@
     "format:check": "pnpm --filter @peyajflow/web format:check",
     "lint": "pnpm --filter @peyajflow/web lint",
     "typecheck": "pnpm --filter @peyajflow/web typecheck",
-    "test": "pnpm --filter @peyajflow/web test"
+    "test": "pnpm --filter @peyajflow/web test",
+    "test:e2e": "pnpm --filter @peyajflow/web test:e2e"
   }
 }

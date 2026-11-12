@@ -1,6 +1,7 @@
 from alembic import context
 
-from app.database import database_engine, metadata
+from app.database import database_engine
+from app.main import metadata
 
 engine = database_engine()
 if engine is None:

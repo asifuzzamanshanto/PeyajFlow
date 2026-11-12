@@ -5,6 +5,7 @@ next-env.d.ts
 .pnpm-store/
 .tools/
 .venv/
+.photos/
 __pycache__/
 .pytest_cache/
 .ruff_cache/

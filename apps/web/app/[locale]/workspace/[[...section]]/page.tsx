@@ -1,0 +1,324 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
+import { BrandLogo } from "../../../../components/brand-logo";
+import { Details, Field } from "../../../../components/workspace/fields";
+import { WorkspaceForm } from "../../../../components/workspace/form";
+import {
+  InspectionsPage,
+  RiskPage,
+} from "../../../../components/workspace/inspection";
+import {
+  DemandPage,
+  SupplyPage,
+} from "../../../../components/workspace/market";
+import { LotPage, StockPage } from "../../../../components/workspace/stock";
+import {
+  OfferHistoryPage,
+  OffersPage,
+  OrderPage,
+  OrdersPage,
+} from "../../../../components/workspace/trade";
+import { isLocale, type Locale } from "../../../../lib/copy";
+import {
+  api,
+  ApiError,
+  type DemoIdentity,
+  type Profile,
+} from "../../../../lib/workspace-api";
+import { errorText, local, roles } from "../../../../lib/workspace-copy";
+import type { Filters } from "../../../../lib/workspace-types";
+import { mutate, signIn, signOut } from "../actions";
+
+export const dynamic = "force-dynamic";
+
+function destinations(locale: Locale, actor: Profile) {
+  const pages = [["", local(locale, "সংক্ষিপ্ত চিত্র", "Overview")]];
+  if (actor.role !== "buyer")
+    pages.push([
+      "stock",
+      actor.role === "farmer"
+        ? local(locale, "আমার মজুত", "My stock")
+        : local(locale, "মজুত", "Stock"),
+    ]);
+  if (actor.role === "buyer")
+    pages.push(
+      ["demand", local(locale, "চাহিদা", "Demand")],
+      ["supply", local(locale, "মজুত খুঁজুন", "Browse supply")],
+    );
+  if (actor.role !== "agent")
+    pages.push(
+      ["offers", local(locale, "অফার", "Offers")],
+      ["orders", local(locale, "অর্ডার", "Orders")],
+    );
+  return pages;
+}
+
+function Overview({
+  locale,
+  actor,
+  base,
+}: {
+  locale: Locale;
+  actor: Profile;
+  base: string;
+}) {
+  return (
+    <>
+      <h1>{local(locale, "ওয়ার্কস্পেস", "Workspace")}</h1>
+      <section className="work-panel work-profile">
+        <div>
+          <h2>{actor.name}</h2>
+          <p>
+            {local(locale, ...roles[actor.role])} · {actor.district}
+          </p>
+          <p>
+            {actor.verified
+              ? local(locale, "যাচাইকৃত অ্যাকাউন্ট", "Verified account")
+              : local(locale, "নিজস্ব তথ্য", "Self-reported profile")}
+          </p>
+        </div>
+        <WorkspaceForm
+          locale={locale}
+          action={signOut.bind(null, locale)}
+          label={local(locale, "সাইন আউট", "Sign out")}
+        />
+      </section>
+      <div className="work-cards">
+        {destinations(locale, actor)
+          .slice(1)
+          .map(([path, name]) => (
+            <section key={path} className="work-panel">
+              <h2>
+                <Link className="work-link" href={`${base}/${path}`}>
+                  {name}
+                </Link>
+              </h2>
+            </section>
+          ))}
+      </div>
+      <section className="work-panel">
+        <Details label={local(locale, "প্রোফাইল বদলান", "Edit profile")}>
+          <WorkspaceForm
+            locale={locale}
+            action={mutate.bind(null, locale, "profile", "", "")}
+            label={local(locale, "প্রোফাইল সংরক্ষণ করুন", "Save profile")}
+          >
+            <div className="work-grid">
+              <Field label={local(locale, "নাম", "Name")}>
+                <input
+                  name="name"
+                  defaultValue={actor.name}
+                  maxLength={100}
+                  required
+                />
+              </Field>
+              <Field label={local(locale, "জেলা", "District")}>
+                <input
+                  name="district"
+                  defaultValue={actor.district}
+                  maxLength={100}
+                  required
+                />
+              </Field>
+              <Field label={local(locale, "পছন্দের ভাষা", "Preferred language")}>
+                <select name="language" defaultValue={actor.language}>
+                  <option value="bn">বাংলা</option>
+                  <option value="en">English</option>
+                </select>
+              </Field>
+            </div>
+          </WorkspaceForm>
+        </Details>
+      </section>
+    </>
+  );
+}
+
+async function panel(
+  locale: Locale,
+  actor: Profile,
+  base: string,
+  section: string[],
+  filters: Filters,
+): Promise<ReactNode> {
+  const [page, id, child, extra] = section;
+  const rawOffset = Number(filters.offset ?? 0);
+  const offset =
+    Number.isSafeInteger(rawOffset) && rawOffset >= 0 && rawOffset <= 1_000_000
+      ? rawOffset
+      : 0;
+  const context = { locale, actor, base, offset };
+  if (!page) return <Overview {...context} />;
+  if (!destinations(locale, actor).some(([path]) => path === page)) {
+    return (
+      <p className="work-panel" role="alert">
+        {errorText(locale, "role_forbidden")}
+      </p>
+    );
+  }
+  if (
+    extra ||
+    (id && !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id))
+  )
+    notFound();
+  if (!id) {
+    if (page === "stock") return StockPage(context);
+    if (page === "demand") return DemandPage(context);
+    if (page === "supply") return SupplyPage({ ...context, filters });
+    if (page === "offers") return OffersPage(context);
+    if (page === "orders") return OrdersPage(context);
+  }
+  if (id && page === "stock") {
+    if (!child) return LotPage({ ...context, id });
+    if (child === "inspections") return InspectionsPage({ ...context, id });
+    if (child === "risk") return RiskPage({ ...context, id });
+  }
+  if (id && page === "orders" && !child) return OrderPage({ ...context, id });
+  if (id && page === "offers" && !child)
+    return OfferHistoryPage({ ...context, id });
+  notFound();
+}
+
+export default async function WorkspacePage({
+  params,
+  searchParams,
+}: PageProps<"/[locale]/workspace/[[...section]]">) {
+  const { locale, section = [] } = await params;
+  if (!isLocale(locale)) notFound();
+  const base = `/${locale}/workspace`;
+  const alternative = locale === "bn" ? "en" : "bn";
+  let actor: Profile | undefined;
+  let error: string | undefined;
+  let identities: DemoIdentity[] = [];
+  try {
+    actor = await api<Profile>("/v1/me");
+  } catch (exception) {
+    if (!(exception instanceof ApiError)) throw exception;
+    if (exception.status !== 401) error = exception.code;
+  }
+  if (!actor && !error) {
+    try {
+      identities = await api<DemoIdentity[]>("/v1/auth/demo");
+    } catch (exception) {
+      if (!(exception instanceof ApiError)) throw exception;
+      error = exception.code;
+    }
+  }
+  const filters = await searchParams;
+  let content: ReactNode;
+  if (actor) {
+    try {
+      content = await panel(locale, actor, base, section, filters);
+    } catch (exception) {
+      if (!(exception instanceof ApiError)) throw exception;
+      content = (
+        <p className="work-panel" role="alert">
+          {errorText(locale, exception.code)}
+        </p>
+      );
+    }
+  }
+  return (
+    <div className="work-shell">
+      <a className="skip-link" href="#main">
+        {local(locale, "মূল অংশে যান", "Skip to main content")}
+      </a>
+      <header className="work-header">
+        <Link className="brand-link" href={base}>
+          <BrandLogo />
+        </Link>
+        <div className="work-header-actions">
+          {actor?.is_demo && (
+            <span className="work-tag">{local(locale, "ডেমো", "Demo")}</span>
+          )}
+          <Link
+            className="language"
+            href={`/${alternative}/workspace${section.length ? `/${section.join("/")}` : ""}`}
+            lang={alternative}
+          >
+            {local(locale, "English", "বাংলা")}
+          </Link>
+        </div>
+      </header>
+      {actor && (
+        <nav
+          className="work-nav"
+          aria-label={local(
+            locale,
+            "ওয়ার্কস্পেস নেভিগেশন",
+            "Workspace navigation",
+          )}
+        >
+          {destinations(locale, actor).map(([path, name]) => (
+            <Link
+              key={path}
+              href={path ? `${base}/${path}` : base}
+              aria-current={(section[0] ?? "") === path ? "page" : undefined}
+            >
+              {name}
+            </Link>
+          ))}
+        </nav>
+      )}
+      <main className="work-main" id="main">
+        {actor ? (
+          <>
+            {filters.saved === "1" && (
+              <p className="work-feedback" role="status">
+                {local(locale, "পরিবর্তন সংরক্ষিত হয়েছে।", "Changes saved.")}
+              </p>
+            )}
+            {content}
+          </>
+        ) : (
+          <div className="work-sign-in">
+            <h1>{local(locale, "সাইন ইন", "Sign in")}</h1>
+            {error && (
+              <p role="status" className="work-panel">
+                {errorText(locale, error)}
+              </p>
+            )}
+            {identities.length > 0 && (
+              <section className="work-panel">
+                <h2>{local(locale, "ডেমো অ্যাকাউন্ট", "Demo accounts")}</h2>
+                <p>
+                  {local(
+                    locale,
+                    "কাল্পনিক অ্যাকাউন্ট বেছে নিয়ে ওয়ার্কস্পেস দেখুন।",
+                    "Choose a fictional account to explore the workspace.",
+                  )}
+                </p>
+                <WorkspaceForm
+                  locale={locale}
+                  action={signIn.bind(null, locale)}
+                  label={local(locale, "ওয়ার্কস্পেস খুলুন", "Open workspace")}
+                >
+                  <Field label={local(locale, "অ্যাকাউন্ট", "Account")}>
+                    <select name="identity" required defaultValue="">
+                      <option value="" disabled>
+                        {local(locale, "বেছে নিন", "Choose an account")}
+                      </option>
+                      {identities.map((identity) => (
+                        <option
+                          key={identity.identity}
+                          value={identity.identity}
+                        >
+                          {identity.name} ·{" "}
+                          {local(locale, ...roles[identity.role])}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </WorkspaceForm>
+              </section>
+            )}
+            <Link className="work-link" href={`/${locale}`}>
+              {local(locale, "সিস্টেমের অবস্থা", "System status")}
+            </Link>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

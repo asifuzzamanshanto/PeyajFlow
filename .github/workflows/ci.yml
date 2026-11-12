@@ -11,6 +11,20 @@ permissions:
 jobs:
   web:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: peyajflow
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: peyajflow_browser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U peyajflow -d peyajflow_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -24,6 +38,38 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
+      - run: pnpm --filter @peyajflow/web exec playwright-core install --with-deps chromium
+      - name: Verify pilot in Chromium
+        env:
+          DATABASE_URL: postgresql+psycopg://peyajflow:test@127.0.0.1:5432/peyajflow_browser
+          APP_ENV: test
+          DEMO_MODE: "true"
+          PHOTO_STORAGE: local
+          APP_COOKIE_SECURE: "false"
+          E2E_WEB_ORIGIN: http://127.0.0.1:3000
+        run: |
+          export PHOTO_DIR="$RUNNER_TEMP/peyajflow-photos"
+          uv --directory services/api sync --locked
+          uv --directory services/api run --locked alembic upgrade head
+          uv --directory services/api run --locked python -m app.seed
+          uv --directory services/api run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          api_pid=$!
+          pnpm --filter @peyajflow/web start --hostname 127.0.0.1 --port 3000 &
+          web_pid=$!
+          trap 'kill "$api_pid" "$web_pid" 2>/dev/null || true' EXIT
+          timeout 60 bash -c '
+            until curl -fsS http://127.0.0.1:8000/health/ready >/dev/null &&
+              curl -fsS http://127.0.0.1:3000/en/workspace >/dev/null; do
+              sleep 1
+            done
+          '
+          pnpm test:e2e
 
   api:
     runs-on: ubuntu-latest
@@ -32,6 +78,7 @@ jobs:
         working-directory: services/api
     env:
       DATABASE_URL: postgresql+psycopg://peyajflow:test@127.0.0.1:5432/peyajflow_test
+      TEST_DATABASE_URL: postgresql+psycopg://peyajflow:test@127.0.0.1:5432/peyajflow_test
     services:
       postgres:
         image: postgres:16

@@ -102,6 +102,9 @@ export default async function Workspace({ params }: PageProps<"/[locale]">) {
               pendingLabel={words.refreshing}
             />
           </div>
+          <Link className="work-link" href={`/${locale}/workspace`}>
+            {locale === "bn" ? "ওয়ার্কস্পেস খুলুন" : "Open workspace"}
+          </Link>
           <div aria-live="polite">
             <section className="summary" aria-labelledby="summary-heading">
               <div>
