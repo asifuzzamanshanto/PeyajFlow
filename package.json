@@ -1,0 +1,17 @@
+{
+  "name": "peyajflow",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @peyajflow/web dev",
+    "build": "pnpm --filter @peyajflow/web build",
+    "format": "pnpm --filter @peyajflow/web format",
+    "format:check": "pnpm --filter @peyajflow/web format:check",
+    "lint": "pnpm --filter @peyajflow/web lint",
+    "typecheck": "pnpm --filter @peyajflow/web typecheck",
+    "test": "pnpm --filter @peyajflow/web test"
+  }
+}

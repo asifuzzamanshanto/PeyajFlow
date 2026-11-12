@@ -1,0 +1,18 @@
+FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
+FROM python:3.13-slim
+
+COPY --from=uv /uv /usr/local/bin/uv
+WORKDIR /app
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
+COPY alembic.ini ./
+COPY migrations migrations
+COPY app app
+
+RUN useradd --system --uid 10001 peyajflow
+USER peyajflow
+EXPOSE 8000
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\""]
