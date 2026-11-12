@@ -21,7 +21,7 @@ Compose defaults are for local development. Copy the root `.env.example` to `.en
 
 ### Run the API on the host
 
-Start PostgreSQL alone with `docker compose up -d db`. In `services/api`, copy `.env.example` to `.env` and adjust the connection URL if needed.
+Use an existing local PostgreSQL instance or start PostgreSQL alone with `docker compose up -d db`. In `services/api`, copy `.env.example` to `.env` and adjust the connection URL if needed.
 
 ```sh
 uv sync --locked
