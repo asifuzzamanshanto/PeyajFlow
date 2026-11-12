@@ -15,6 +15,7 @@ Last updated November 12, 2026 (Asia/Dhaka).
 
 | Check | Status |
 | --- | --- |
+| Local Git | Foundation committed as `bd2271e902f637efc973b03db9b1b7300540074f` on `chore/repo-foundation` |
 | Web dependencies, format, lint, typecheck, unit tests, and production build | Frozen install, format, lint, typecheck, 4 unit tests, and production build passed |
 | API dependencies, lint, format, and health tests | Locked sync, Ruff lint and formatting, and 3 API tests passed |
 | PostgreSQL migration and readiness | One Alembic head. Upgrade, baseline rollback, and re-upgrade passed on disposable PostgreSQL 18.6. Alembic reported no metadata drift. The running API returned HTTP 503 before migration and HTTP 200 afterward |
