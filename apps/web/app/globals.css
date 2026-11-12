@@ -596,3 +596,30 @@ h1:lang(bn) {
 .pilot-secondary:hover {
   background: var(--lavender);
 }
+
+.ops-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block: 16px;
+}
+.ops-nav .work-link {
+  padding-inline: 12px;
+  border-radius: 7px;
+}
+.ops-nav .work-link[aria-current="page"] {
+  background: var(--lavender);
+  font-weight: 650;
+}
+.ops-count {
+  color: var(--deep);
+  font-size: 1.8rem;
+  font-weight: 680;
+}
+.offline-notice {
+  border-inline-start: 4px solid var(--amber);
+}
+.work-row > .work-form {
+  width: auto;
+  margin-top: 0;
+}

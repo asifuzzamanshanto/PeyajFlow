@@ -343,6 +343,7 @@ export async function InspectionsPage({
               locale={locale}
               action={mutate.bind(null, locale, "inspection", id, "")}
               label={local(locale, "পরিদর্শন জমা দিন", "Submit inspection")}
+              compactPhotos
             >
               <Field
                 label={local(locale, "পরিদর্শনের তারিখ", "Inspection date")}
@@ -380,8 +381,16 @@ export async function InspectionsPage({
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   required
+                  aria-describedby="inspection-photo-limit"
                 />
               </Field>
+              <p id="inspection-photo-limit">
+                {local(
+                  locale,
+                  "বড় ছবির সেট আপলোডের আগে ছোট করা হবে।",
+                  "Large photo batches are compressed before upload.",
+                )}
+              </p>
               <label className="checkbox">
                 <input type="checkbox" name="consent" required />
                 {local(

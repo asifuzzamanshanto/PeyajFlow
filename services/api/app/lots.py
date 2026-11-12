@@ -291,10 +291,18 @@ def detail(db: Session, row: RowMapping) -> LotDetail:
 
 
 @router.get("", response_model=list[LotView])
-def list_lots(actor: Actor, db: DB, offset: Annotated[int, Query(ge=0)] = 0):
+def list_lots(
+    actor: Actor,
+    db: DB,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    unverified_only: bool = False,
+):
+    scope = scoped_lots(actor)
+    if unverified_only:
+        scope &= lots.c.verified_at.is_(None)
     rows = db.execute(
         select(lots)
-        .where(scoped_lots(actor))
+        .where(scope)
         .order_by(lots.c.created_at.desc(), lots.c.id)
         .offset(offset)
         .limit(50)

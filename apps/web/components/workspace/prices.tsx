@@ -45,6 +45,15 @@ export function seriesName(locale: Locale, row: PriceSeries) {
   return `${row.market} · ${row.district} · ${priceType(locale, row.price_type)} · ${row.grade}${row.synthetic ? local(locale, " · কাল্পনিক", " · Synthetic") : ""}`;
 }
 
+function batchStatus(locale: Locale, status: string) {
+  const labels: Record<string, string> = {
+    pending: "পর্যালোচনাধীন",
+    approved: "অনুমোদিত",
+    rejected: "প্রত্যাখ্যাত",
+  };
+  return locale === "bn" ? (labels[status] ?? status) : status;
+}
+
 function Observations({
   locale,
   rows,
@@ -55,7 +64,12 @@ function Observations({
   if (!rows.length)
     return <p>{local(locale, "কোনো পর্যবেক্ষণ নেই।", "No observations.")}</p>;
   return (
-    <div className="pilot-table">
+    <div
+      className="pilot-table"
+      role="region"
+      aria-label={local(locale, "দরের পর্যবেক্ষণ", "Price observations")}
+      tabIndex={0}
+    >
       <table>
         <thead>
           <tr>
@@ -195,7 +209,16 @@ function ForecastPanel({
               "Each replay uses reports published by its forecast date. Some methods have fewer eligible test dates.",
             )}
           </p>
-          <div className="pilot-table">
+          <div
+            className="pilot-table"
+            role="region"
+            aria-label={local(
+              locale,
+              "ঐতিহাসিক যাচাইয়ের ফল",
+              "Backtest results",
+            )}
+            tabIndex={0}
+          >
             <table>
               <thead>
                 <tr>
@@ -365,7 +388,8 @@ export async function ImportsPage({
         <section className="work-panel">
           <h2>{local(locale, "পর্যালোচনা", "Review")}</h2>
           <p>
-            {batch.status} · {numberLabel(locale, batch.accepted_rows)}{" "}
+            {batchStatus(locale, batch.status)} ·{" "}
+            {numberLabel(locale, batch.accepted_rows)}{" "}
             {local(locale, "সারি", "rows")} ·{" "}
             {numberLabel(locale, batch.duplicates)}{" "}
             {local(locale, "নকল", "duplicates")}
@@ -492,7 +516,8 @@ export async function ImportsPage({
               </Link>
             </h2>
             <p>
-              {batch.status} · {numberLabel(locale, batch.accepted_rows)}{" "}
+              {batchStatus(locale, batch.status)} ·{" "}
+              {numberLabel(locale, batch.accepted_rows)}{" "}
               {local(locale, "সারি", "rows")} ·{" "}
               {timeLabel(locale, batch.created_at)}
             </p>

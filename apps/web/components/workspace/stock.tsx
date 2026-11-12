@@ -163,13 +163,17 @@ export async function StockPage({
   actor,
   base,
   offset,
+  unverified = false,
 }: {
   locale: Locale;
   actor: Profile;
   base: string;
   offset: number;
+  unverified?: boolean;
 }) {
-  const lots = await api<Lot[]>(`/v1/lots?offset=${offset}`);
+  const lots = await api<Lot[]>(
+    `/v1/lots?offset=${offset}&unverified_only=${unverified}`,
+  );
   return (
     <>
       <h1>
@@ -177,6 +181,11 @@ export async function StockPage({
           ? local(locale, "আমার মজুত", "My stock")
           : local(locale, "মজুত", "Stock")}
       </h1>
+      {unverified && (
+        <Link className="work-link" href={`${base}/stock`}>
+          {local(locale, "সব মজুত দেখুন", "Show all lots")}
+        </Link>
+      )}
       {actor.role === "farmer" && (
         <section className="work-panel">
           <Details label={local(locale, "নতুন মজুত নিবন্ধন", "Register a lot")}>

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from enum import StrEnum
@@ -11,15 +12,21 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import (
+    admin,
     advice,
     auth,
+    credentials,
     demand,
     forecast,
+    hardening,
     inspection,
     logistics,
     lots,
     market_data,
+    notifications,
+    rate_limits,
     risk,
+    telephony,
     trade,
     voice,
 )
@@ -67,6 +74,24 @@ async def expire_reservations(engine: Engine) -> None:
         await asyncio.to_thread(trade.sweep_expired, engine)
 
 
+async def deliver_notifications(engine: Engine) -> None:
+    while True:
+        await asyncio.sleep(15)
+        try:
+            await asyncio.to_thread(notifications.process_deliveries, engine)
+        except SQLAlchemyError:
+            logging.getLogger(__name__).warning("notification_delivery_unavailable")
+
+
+async def prune_rate_limits(engine: Engine) -> None:
+    while True:
+        await asyncio.sleep(600)
+        try:
+            await asyncio.to_thread(rate_limits.prune, engine)
+        except SQLAlchemyError:
+            logging.getLogger(__name__).warning("rate_limit_cleanup_unavailable")
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     heads = frozenset(ScriptDirectory.from_config(alembic_config()).get_heads())
@@ -76,23 +101,30 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     engine = database_engine()
     application.state.database_engine = engine
     application.state.migration_heads = heads
-    expiry = (
-        asyncio.create_task(expire_reservations(engine)) if engine is not None else None
+    workers = (
+        [
+            asyncio.create_task(task(engine))
+            for task in (expire_reservations, deliver_notifications, prune_rate_limits)
+        ]
+        if engine is not None
+        else []
     )
     try:
         yield
     finally:
-        if expiry is not None:
-            expiry.cancel()
+        for worker in workers:
+            worker.cancel()
+        for worker in workers:
             with suppress(asyncio.CancelledError):
-                await expiry
+                await worker
         if engine is not None:
             engine.dispose()
 
 
 app = FastAPI(title="PeyajFlow API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(inspection.InspectionUploadLimit)
+hardening.configure(app)
 app.include_router(auth.router)
+app.include_router(credentials.router)
 app.include_router(lots.router)
 app.include_router(demand.router)
 app.include_router(trade.router)
@@ -103,6 +135,9 @@ app.include_router(forecast.router)
 app.include_router(advice.router)
 app.include_router(logistics.router)
 app.include_router(voice.router)
+app.include_router(telephony.router)
+app.include_router(notifications.router)
+app.include_router(admin.router)
 
 
 @app.get("/health/live", response_model=Liveness, tags=["Health"])

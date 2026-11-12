@@ -13,6 +13,26 @@ export const roles: Record<Role, [string, string]> = {
 };
 
 const errors: Record<string, [string, string]> = {
+  credentials_invalid: [
+    "অ্যাকাউন্ট আইডি ও পাসওয়ার্ড মিলেনি।",
+    "The account ID or password is incorrect.",
+  ],
+  rate_limited: [
+    "অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
+    "Too many requests. Wait and try again.",
+  ],
+  request_too_large: [
+    "ফাইল বা তথ্যের আকার অনুমোদিত সীমা ছাড়িয়েছে।",
+    "The request exceeds the allowed size.",
+  ],
+  sms_verified_phone_required: [
+    "অপারেটরের যাচাই করা ফোন নম্বর দরকার।",
+    "An operator-verified phone is required.",
+  ],
+  dispute_requires_review: [
+    "আগের সরবরাহের রেকর্ড পাওয়া যায়নি।",
+    "The previous fulfillment state could not be established.",
+  ],
   voice_quantity_mismatch: [
     "বক্তব্যের পরিমাণ অফারের পরিমাণের সঙ্গে মেলেনি।",
     "The spoken quantity does not match the selected offer.",

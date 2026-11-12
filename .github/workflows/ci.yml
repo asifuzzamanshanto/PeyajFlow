@@ -56,7 +56,7 @@ jobs:
         run: |
           export PHOTO_DIR="$RUNNER_TEMP/peyajflow-photos"
           uv --directory services/api sync --locked
-          uv --directory services/api run --locked alembic upgrade head
+          uv --directory services/api run --locked python -m app.migrate
           uv --directory services/api run --locked python -m app.seed
           uv --directory services/api run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           api_pid=$!
@@ -70,6 +70,7 @@ jobs:
             done
           '
           pnpm test:e2e
+          SMOKE_DEMO_ID=farmer pnpm smoke
 
   api:
     runs-on: ubuntu-latest
@@ -104,6 +105,36 @@ jobs:
       - run: uv sync --locked
       - run: uv run --locked ruff check .
       - run: uv run --locked ruff format --check .
-      - run: uv run --locked alembic upgrade head
+      - run: uv run --locked python -m app.migrate
       - run: uv run --locked alembic check
       - run: uv run --locked pytest -q
+
+  container:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: peyajflow-ci
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build and migrate Compose
+        run: |
+          docker compose config --quiet
+          docker compose up --build -d
+          timeout 60 bash -c 'until curl -fsS http://127.0.0.1:8000/health/ready; do sleep 1; done'
+      - name: Restore a disposable database backup
+        run: |
+          docker compose exec -T api python -m app.seed
+          docker compose exec -T db pg_dump -U peyajflow -Fc peyajflow > "$RUNNER_TEMP/peyajflow.dump"
+          docker compose exec -T db createdb -U peyajflow peyajflow_restore_check
+          docker compose exec -T db pg_restore -U peyajflow --exit-on-error --single-transaction --no-owner -d peyajflow_restore_check < "$RUNNER_TEMP/peyajflow.dump"
+          source_head="$(docker compose exec -T db psql -U peyajflow -d peyajflow -Atc 'select version_num from alembic_version')"
+          restored_head="$(docker compose exec -T db psql -U peyajflow -d peyajflow_restore_check -Atc 'select version_num from alembic_version')"
+          test -n "$source_head" && test "$source_head" = "$restored_head"
+          source_users="$(docker compose exec -T db psql -U peyajflow -d peyajflow -Atc 'select count(*) from users')"
+          restored_users="$(docker compose exec -T db psql -U peyajflow -d peyajflow_restore_check -Atc 'select count(*) from users')"
+          test "$source_users" -gt 0 && test "$source_users" = "$restored_users"
+      - name: Collect failed service diagnostics
+        if: failure()
+        run: docker compose logs --no-color api migrate
+      - name: Remove disposable CI stack
+        if: always()
+        run: docker compose down -v

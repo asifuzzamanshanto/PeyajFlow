@@ -208,10 +208,23 @@ test(
         .check();
       const png = await farmer.evaluate(() => {
         const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = 64;
+        canvas.width = canvas.height = 960;
+        const context = canvas.getContext("2d");
+        const pixels = context.createImageData(canvas.width, canvas.height);
+        let state = 3155912;
+        for (let index = 0; index < pixels.data.length; index += 1) {
+          state ^= state << 13;
+          state ^= state >>> 17;
+          state ^= state << 5;
+          pixels.data[index] = index % 4 === 3 ? 255 : (state >>> 0) % 64;
+        }
+        context.putImageData(pixels, 0, 0);
         return canvas.toDataURL("image/png").split(",")[1];
       });
       const buffer = Buffer.from(png, "base64");
+      assert.ok(
+        buffer.length <= 3 * 1024 * 1024 && buffer.length * 2 > 3_000_000,
+      );
       await inspection.getByLabel("2–4 photos, up to 3 MiB each").setInputFiles(
         ["overview.png", "closeup.png"].map((name) => ({
           name,
@@ -224,12 +237,29 @@ test(
           "I consent to storing these photos for authorized inspection and review.",
         )
         .check();
+      await farmer.evaluate(() => {
+        const originalFetch = window.fetch;
+        window.inspectionPayload = new Promise((resolve) => {
+          window.fetch = function (input, init) {
+            if (new Headers(init?.headers).has("next-action")) {
+              window.fetch = originalFetch;
+              resolve(new Request(input, init).arrayBuffer());
+            }
+            return originalFetch.call(window, input, init);
+          };
+        });
+      });
       await inspection
         .getByRole("button", { name: "Submit inspection" })
         .click();
       await farmer
         .getByText("Photo quality check · Uncertain evidence")
         .waitFor();
+      assert.ok(
+        await farmer.evaluate(
+          async () => (await window.inspectionPayload).byteLength < 3_050_000,
+        ),
+      );
       const image = farmer.getByRole("img", { name: "Inspection photo 1" });
       await image.waitFor();
       const photoUrl = await image.getAttribute("src");

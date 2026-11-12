@@ -24,8 +24,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session
-from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.auth import Actor, Input, Role, audit, require_role
 from app.condition import MAX_PHOTO_BYTES, QUALITY_VERSION, VisibleFlag, prepare_photo
@@ -35,40 +33,6 @@ from app.photo_storage import PhotoStorage
 
 router = APIRouter(prefix="/v1/lots/{lot_id}", tags=["Inspection and condition"])
 logger = logging.getLogger(__name__)
-UPLOAD_REQUEST_BYTES = 13 * 1024 * 1024
-
-
-class InspectionUploadLimit:
-    def __init__(self, app: ASGIApp):
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if (
-            scope["type"] != "http"
-            or scope["method"] != "POST"
-            or not scope["path"].rstrip("/").endswith("/inspections")
-        ):
-            await self.app(scope, receive, send)
-            return
-        content_length = dict(scope["headers"]).get(b"content-length", b"0")
-        if content_length.isdigit() and int(content_length) > UPLOAD_REQUEST_BYTES:
-            await JSONResponse({"detail": "image_too_large"}, status_code=413)(
-                scope, receive, send
-            )
-            return
-        received = 0
-
-        async def bounded_receive():
-            nonlocal received
-            message = await receive()
-            received += len(message.get("body", b""))
-            if received > UPLOAD_REQUEST_BYTES:
-                raise HTTPException(413, "image_too_large")
-            return message
-
-        await self.app(scope, bounded_receive, send)
-
-
 inspections = Table(
     "inspections",
     metadata,

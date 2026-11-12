@@ -2,7 +2,7 @@
 
 PeyajFlow is a Bangladesh-first onion supply-chain platform. The first milestone builds a traceable trade from a farmer's stock lot to a buyer's confirmed order, starting with the Pabna-to-Dhaka pilot.
 
-The bilingual pilot workspace supports inventory and trading, photo inspections, market data and forecasts, hold/sell comparisons, transport quotes, and a Bangla call simulator. See [work status](WORK_STATUS.md) for verification and remaining work. The [original handoff](PeyajFlow_Codex_Master_Handoff.md) is the product and architecture reference.
+The bilingual pilot workspace supports inventory and trading, photo inspections, market data and forecasts, hold/sell comparisons, transport quotes, a Bangla call simulator, alerts, and an operator desk. See [work status](WORK_STATUS.md) for verification and remaining work, [deployment and recovery](docs/DEPLOYMENT.md) for release steps, and the [original handoff](PeyajFlow_Codex_Master_Handoff.md) for the product and architecture reference.
 
 ## Run locally
 
@@ -25,7 +25,7 @@ Use an existing local PostgreSQL instance or start PostgreSQL alone with `docker
 
 ```sh
 uv sync --locked
-uv run --env-file .env alembic upgrade head
+uv run --env-file .env python -m app.migrate
 uv run --env-file .env python -m app.seed
 uv run --env-file .env uvicorn app.main:app --reload
 ```
@@ -38,6 +38,7 @@ uv run --env-file .env uvicorn app.main:app --reload
 4. As Rahim, submit a storage inspection with two to four photos and manual observations. As Jalil, review the evidence. Open **Storage risk** to see the reasons, missing evidence, and suggested inspection urgency.
 5. As the demo operator, use **Market imports** to stage a CSV, inspect provenance and skipped rows, and approve the observations. Use **Market prices** to review the data and the 7-, 14-, or 28-day outlook. Open **Hold or sell** from a lot to compare proceeds under explicit loss, freight, storage, financing, and fee assumptions.
 6. Use **Call simulator** as Rahim to accept a separate active offer. Select its lot and offer, review the Bangla terms, and enter the demo keypad code. The same order appears in the farmer and buyer workspaces. The party responsible for transport can request a quote from that order. The operator can record a quote received from a transporter, and the responsible party can select it.
+7. Open **Alerts** to review activity on offers, orders, and transport. Sign in as the operator and open **Operations** to review verifications, market data health, open disputes, and audit events.
 
 ### Market imports, forecasts, and call simulation
 
@@ -55,9 +56,9 @@ Forecast evaluation replays weekly origins using reports published by each origi
 
 Hold/sell comparisons use local farmgate data for the lot's district and grade, verified-buyer offer terms when supplied, and explicit user assumptions. Freight ranking displays landed cost only when the buyer enters price and freight assumptions. A recorded transporter quote is the basis for the order's freight comparison and local booking record.
 
-The call simulator accepts typed Bangla commands and supports optional device Bangla playback. For example, `অফার গ্রহণ ২০০ কেজি` checks the stated quantity against the selected offer. Maunds use the selected lot's recorded conversion. A call lasts 10 minutes and a pending keypad challenge lasts up to 2 minutes. The challenge is bound to the exact action and cancellation or expiry leaves inventory unchanged. Inspection and support requests appear in the authorized operator or delegated agent's queue. Live carrier and speech-to-text work is tracked under F13.
+The call simulator accepts typed Bangla commands and supports optional device Bangla playback. For example, `অফার গ্রহণ ২০০ কেজি` checks the stated quantity against the selected offer. Maunds use the selected lot's recorded conversion. A call lasts 10 minutes and a pending keypad challenge lasts up to 2 minutes. The challenge is bound to the exact action and cancellation or expiry leaves inventory unchanged. Inspection and support requests appear in the authorized operator or delegated agent's queue. The optional Twilio adapter provides a signed public keypad menu. Carrier verification and speech-to-text remain pending.
 
-Demo accounts require `APP_ENV=development` or `test` together with `DEMO_MODE=true`. Production environments reject demo login and demo sessions. Live OTP enrollment requires a provider integration. Cookie security defaults to HTTPS. Set `APP_COOKIE_SECURE=false` for a local HTTP preview only.
+Demo accounts require `APP_ENV=development` or `test` together with `DEMO_MODE=true`. Production sign-in uses an operator-provisioned account and a passphrase. Live OTP enrollment requires a provider integration. Cookie security defaults to HTTPS. Set `APP_COOKIE_SECURE=false` for a local HTTP preview only. [Account provisioning](docs/DEPLOYMENT.md#prepare-the-release)
 
 Local photo mode requires `PHOTO_STORAGE=local` in development or test. Set `PHOTO_DIR` to override the private directory. Hosted photo storage uses `PHOTO_STORAGE=s3` and `S3_BUCKET`, with optional `S3_ENDPOINT` and `S3_REGION`. Use runtime AWS credentials or `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Configure a private bucket. Authorized clients retrieve sanitized JPEGs through the API. Uploads accept JPEG, PNG, and WebP with a 3 MiB and 12 megapixel limit per photo.
 
@@ -79,4 +80,4 @@ uv run --locked pytest -q
 
 For API integration tests, set both `DATABASE_URL` and `TEST_DATABASE_URL` to a disposable PostgreSQL database. Run `uv run --locked alembic upgrade head`, `uv run --locked alembic check`, and `uv run --locked pytest -q` against it. Tests create fictional records and exercise concurrent transactions.
 
-With the seeded API and web workspace running against a disposable database, install Chromium with `pnpm --filter @peyajflow/web exec playwright-core install chromium` and run `pnpm test:e2e`. Use `E2E_WEB_ORIGIN` and `E2E_API_ORIGIN` to override the default loopback ports 3000 and 8000. Use `PLAYWRIGHT_CHANNEL=msedge` to run against installed Edge or `E2E_SCREENSHOT_DIR` to capture visual evidence.
+With the seeded API and web workspace running against a disposable database, install Chromium with `pnpm --filter @peyajflow/web exec playwright-core install chromium` and run `pnpm test:e2e`. Use `E2E_WEB_ORIGIN` and `E2E_API_ORIGIN` to override the default loopback ports 3000 and 8000. Use `PLAYWRIGHT_CHANNEL=msedge` to run against installed Edge. Set `E2E_SCREENSHOT_DIR` for pilot captures and `RELEASE_SCREENSHOT_DIR` for alerts and operations captures. Run `pnpm smoke` for readiness and routing checks. Set `SMOKE_DEMO_ID=farmer` to exercise a demo session locally.

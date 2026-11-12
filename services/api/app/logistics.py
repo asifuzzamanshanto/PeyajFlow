@@ -30,7 +30,8 @@ from app.advice import Amount, bdt
 from app.auth import Actor, Input, Profile, Role, ShortText, audit, require_role
 from app.database import DB, metadata
 from app.lots import PositiveKg, lots, payload_hash, today
-from app.trade import now, offer_view, order_rows
+from app.notifications import publish
+from app.trade import now, offer_view, order_rows, participants
 
 router = APIRouter(prefix="/v1", tags=["Logistics"])
 DHAKA = ZoneInfo("Asia/Dhaka")
@@ -307,6 +308,14 @@ def request_transport(
         .one()
     )
     audit(db, actor, "logistics.requested", row["id"], order_id=str(body.order_id))
+    publish(
+        db,
+        participants(offer) - {actor.membership_id},
+        "logistics.requested",
+        "logistics",
+        body.order_id,
+        str(row["id"]),
+    )
     return RequestReceipt.model_validate(row)
 
 
@@ -365,6 +374,14 @@ def record_quote(request_id: UUID, body: QuoteInput, actor: Actor, db: DB):
         update(requests).where(requests.c.id == request_id).values(status="quoted")
     )
     audit(db, actor, "logistics.quote_recorded", row["id"], request_id=str(request_id))
+    publish(
+        db,
+        participants(offer),
+        "logistics.quote_recorded",
+        "logistics",
+        order["id"],
+        str(row["id"]),
+    )
     db.commit()
     return quote_view(row, offer)
 
@@ -406,6 +423,14 @@ def book_quote(request_id: UUID, body: BookingInput, actor: Actor, db: DB):
         .one()
     )
     audit(db, actor, "logistics.booked", request_id, quote_id=str(body.quote_id))
+    publish(
+        db,
+        participants(offer),
+        "logistics.booked",
+        "logistics",
+        order["id"],
+        str(request_id),
+    )
     db.commit()
     return RequestReceipt.model_validate(row)
 
@@ -435,5 +460,13 @@ def cancel_request(request_id: UUID, actor: Actor, db: DB):
         .one()
     )
     audit(db, actor, "logistics.cancelled", request_id)
+    publish(
+        db,
+        participants(offer),
+        "logistics.cancelled",
+        "logistics",
+        order["id"],
+        str(request_id),
+    )
     db.commit()
     return RequestReceipt.model_validate(row)

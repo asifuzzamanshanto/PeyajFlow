@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandLogo } from "../../../../components/brand-logo";
 import { AdvicePage } from "../../../../components/workspace/advice";
+import { AlertsPage } from "../../../../components/workspace/alerts";
 import { LogisticsPage } from "../../../../components/workspace/logistics";
+import { OfflineNotice } from "../../../../components/workspace/offline";
+import { OperationsPage } from "../../../../components/workspace/operations";
 import {
   ImportsPage,
   PricePage,
@@ -35,7 +38,7 @@ import {
 } from "../../../../lib/workspace-api";
 import { errorText, local, roles } from "../../../../lib/workspace-copy";
 import type { Filters } from "../../../../lib/workspace-types";
-import { mutate, signIn, signOut } from "../actions";
+import { mutate, passwordSignIn, signIn, signOut } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +62,9 @@ function destinations(locale: Locale, actor: Profile) {
       ["orders", local(locale, "অর্ডার", "Orders")],
     );
   pages.push(["prices", local(locale, "বাজারদর", "Market prices")]);
+  pages.push(["alerts", local(locale, "বিজ্ঞপ্তি", "Alerts")]);
+  if (actor.role === "admin")
+    pages.push(["operations", local(locale, "পরিচালনা", "Operations")]);
   if (actor.role === "admin")
     pages.push(["imports", local(locale, "দর আমদানি", "Market imports")]);
   if (actor.is_demo)
@@ -175,12 +181,15 @@ async function panel(
   )
     notFound();
   if (!id) {
-    if (page === "stock") return StockPage(context);
+    if (page === "stock")
+      return StockPage({ ...context, unverified: filters.unverified === "1" });
     if (page === "demand") return DemandPage(context);
     if (page === "supply") return SupplyPage({ ...context, filters });
     if (page === "offers") return OffersPage(context);
     if (page === "orders") return OrdersPage(context);
     if (page === "prices") return PricePage({ ...context, filters });
+    if (page === "alerts") return AlertsPage(context);
+    if (page === "operations") return OperationsPage({ ...context, filters });
   }
   if (page === "imports" && !child) return ImportsPage({ ...context, id });
   if (page === "voice" && !child) return VoicePage({ ...context, id });
@@ -220,10 +229,15 @@ export default async function WorkspacePage({
       identities = await api<DemoIdentity[]>("/v1/auth/demo");
     } catch (exception) {
       if (!(exception instanceof ApiError)) throw exception;
-      error = exception.code;
+      if (exception.code !== "demo_disabled") error = exception.code;
     }
   }
   const filters = await searchParams;
+  const alternateQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (typeof value === "string" && key !== "saved")
+      alternateQuery.set(key, value);
+  }
   let content: ReactNode;
   if (actor) {
     try {
@@ -231,9 +245,19 @@ export default async function WorkspacePage({
     } catch (exception) {
       if (!(exception instanceof ApiError)) throw exception;
       content = (
-        <p className="work-panel" role="alert">
-          {errorText(locale, exception.code)}
-        </p>
+        <section className="work-panel" role="alert">
+          <h1>
+            {local(
+              locale,
+              "এই পৃষ্ঠাটি খোলা যায়নি",
+              "This page could not be opened",
+            )}
+          </h1>
+          <p>{errorText(locale, exception.code)}</p>
+          <Link className="work-link" href={base}>
+            {local(locale, "ওয়ার্কস্পেসে ফিরুন", "Back to workspace")}
+          </Link>
+        </section>
       );
     }
   }
@@ -252,7 +276,7 @@ export default async function WorkspacePage({
           )}
           <Link
             className="language"
-            href={`/${alternative}/workspace${section.length ? `/${section.join("/")}` : ""}`}
+            href={`/${alternative}/workspace${section.length ? `/${section.map(encodeURIComponent).join("/")}` : ""}${alternateQuery.size ? `?${alternateQuery}` : ""}`}
             lang={alternative}
           >
             {local(locale, "English", "বাংলা")}
@@ -279,7 +303,8 @@ export default async function WorkspacePage({
           ))}
         </nav>
       )}
-      <main className="work-main" id="main">
+      <main className="work-main" id="main" tabIndex={-1}>
+        <OfflineNotice locale={locale} />
         {actor ? (
           <>
             {filters.saved === "1" && (
@@ -331,6 +356,42 @@ export default async function WorkspacePage({
                 </WorkspaceForm>
               </section>
             )}
+            <section className="work-panel">
+              <h2>
+                {local(
+                  locale,
+                  "অপারেটরের দেওয়া অ্যাকাউন্ট",
+                  "Operator-issued account",
+                )}
+              </h2>
+              <WorkspaceForm
+                locale={locale}
+                action={passwordSignIn.bind(null, locale)}
+                label={local(
+                  locale,
+                  "পাসওয়ার্ড দিয়ে সাইন ইন",
+                  "Sign in with password",
+                )}
+              >
+                <Field label={local(locale, "অ্যাকাউন্ট আইডি", "Account ID")}>
+                  <input
+                    name="username"
+                    autoComplete="username"
+                    maxLength={64}
+                    required
+                  />
+                </Field>
+                <Field label={local(locale, "পাসওয়ার্ড", "Password")}>
+                  <input
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    maxLength={256}
+                    required
+                  />
+                </Field>
+              </WorkspaceForm>
+            </section>
             <Link className="work-link" href={`/${locale}`}>
               {local(locale, "সিস্টেমের অবস্থা", "System status")}
             </Link>

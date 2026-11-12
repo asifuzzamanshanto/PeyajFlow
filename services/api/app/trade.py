@@ -46,6 +46,7 @@ from app.auth import (
 from app.database import DB, metadata
 from app.demand import GRADE_RANK, demand_for, listed_lot_filter
 from app.lots import BDT, Grade, PositiveKg, lots, payload_hash, record_event, today
+from app.notifications import publish
 
 router = APIRouter(prefix="/v1", tags=["Offers and orders"])
 ACTIVE_OFFERS = ("sent", "countered")
@@ -515,6 +516,7 @@ def send_offer(body: OfferInput, actor: Profile, db: Session):
         actor,
         terms=result,
     )
+    publish(db, [row["seller_membership_id"]], "offer.sent", "offer", row["id"], "1")
     return result
 
 
@@ -553,6 +555,7 @@ def accept_offer(
         order_id=order_id,
     )
     journal(db, "order", Receipt(id=order_id, status="confirmed"), "confirmed", actor)
+    publish(db, participants(offer), "order.confirmed", "order", order_id)
     return order_id
 
 
@@ -612,6 +615,15 @@ def respond_to_offer(offer_id: UUID, body: OfferReply, actor: Profile, db: Sessi
         id=offer_id, status=status, version=body.version + 1, order_id=order_id
     )
     journal(db, "offer", result, status, actor, body, terms=offer_view(updated))
+    if status != "accepted":
+        publish(
+            db,
+            participants(offer) - {actor.membership_id},
+            f"offer.{status}",
+            "offer",
+            offer_id,
+            str(result.version),
+        )
     return result
 
 
@@ -704,7 +716,12 @@ def expire_order(db: Session, order: RowMapping, offer: RowMapping):
     )
     result = Receipt(id=order["id"], status="expired")
     journal(db, "order", result, "expired")
+    publish(db, participants(offer), "order.expired", "order", order["id"])
     return result
+
+
+def participants(offer: RowMapping) -> set[UUID]:
+    return {offer["buyer_membership_id"], offer["seller_membership_id"]}
 
 
 @router.post("/orders/{order_id}/transition", response_model=Receipt)
@@ -741,6 +758,14 @@ def transition(order_id: UUID, body: OrderReply, actor: Actor, db: DB):
     )
     result = Receipt(id=order_id, status=result_status)
     journal(db, "order", result, result_status, actor, body)
+    publish(
+        db,
+        participants(offer),
+        f"order.{result_status}",
+        "order",
+        order_id,
+        str(body.request_key),
+    )
     db.commit()
     return result
 

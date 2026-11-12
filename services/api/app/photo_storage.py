@@ -14,7 +14,7 @@ def s3():
     return boto3.client(
         "s3",
         endpoint_url=os.getenv("S3_ENDPOINT") or None,
-        region_name=os.getenv("S3_REGION", "us-east-1"),
+        region_name=os.getenv("S3_REGION") or "us-east-1",
         aws_access_key_id=os.getenv("S3_ACCESS_KEY_ID") or None,
         aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY") or None,
     )

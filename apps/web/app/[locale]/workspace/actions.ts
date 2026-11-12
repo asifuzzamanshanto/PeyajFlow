@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { FormState } from "../../../components/workspace/form";
 import { isLocale, type Locale } from "../../../lib/copy";
@@ -10,6 +10,25 @@ import { asciiDigits } from "../../../lib/workspace-values";
 function errorState(error: unknown): FormState {
   if (error instanceof ApiError) return { error: error.code };
   throw error;
+}
+
+async function saveSession(session: { token: string; expires_at: string }) {
+  const jar = await cookies();
+  if (jar.has(sessionCookie))
+    await api("/v1/auth/session", { method: "DELETE" }).catch(() => {});
+  const host = (await headers()).get("host") ?? "";
+  const loopback = /^(localhost|127\.0\.0\.1|\[::1\])(?::[0-9]+)?$/i.test(host);
+  jar.set(sessionCookie, session.token, {
+    expires: new Date(session.expires_at),
+    httpOnly: true,
+    sameSite: "lax",
+    secure: !(
+      loopback &&
+      process.env.APP_COOKIE_SECURE === "false" &&
+      process.env.VERCEL !== "1"
+    ),
+    path: "/",
+  });
 }
 
 export async function signIn(
@@ -25,16 +44,28 @@ export async function signIn(
         identity: String(form.get("identity") ?? ""),
       }),
     );
-    const jar = await cookies();
-    if (jar.has(sessionCookie))
-      await api("/v1/auth/session", { method: "DELETE" }).catch(() => {});
-    jar.set(sessionCookie, session.token, {
-      expires: new Date(session.expires_at),
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.APP_COOKIE_SECURE !== "false",
-      path: "/",
-    });
+    await saveSession(session);
+  } catch (error) {
+    return errorState(error);
+  }
+  redirect(`/${locale}/workspace`);
+}
+
+export async function passwordSignIn(
+  locale: Locale,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  if (!isLocale(locale)) return { error: "invalid_input" };
+  try {
+    const session = await api<{ token: string; expires_at: string }>(
+      "/v1/auth/password",
+      json({
+        username: String(form.get("username") ?? "").trim(),
+        password: String(form.get("password") ?? ""),
+      }),
+    );
+    await saveSession(session);
   } catch (error) {
     return errorState(error);
   }

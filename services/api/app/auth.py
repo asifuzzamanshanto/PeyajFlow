@@ -29,6 +29,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.database import DB, metadata
+from app.rate_limits import enforce
 
 
 class Role(StrEnum):
@@ -241,6 +242,8 @@ def actor_for(
     )
     if row is None or (row["is_demo"] and not demo_enabled()):
         raise HTTPException(401, "session_expired")
+    if os.getenv("APP_ENV") == "production":
+        enforce(db, "member", str(row["membership_id"]), limit=120, seconds=60)
     return Profile.model_validate(row)
 
 
@@ -288,6 +291,10 @@ def demo_login(body: DemoLogin, db: DB, response: Response) -> SessionToken:
         is None
     ):
         raise HTTPException(503, "demo_seed_required")
+    return issue_token(db, member_id, response)
+
+
+def issue_token(db: Session, member_id: UUID, response: Response) -> SessionToken:
     token = token_urlsafe(32)
     expires_at = datetime.now(UTC) + TOKEN_TTL
     db.execute(delete(sessions).where(sessions.c.expires_at <= func.now()))

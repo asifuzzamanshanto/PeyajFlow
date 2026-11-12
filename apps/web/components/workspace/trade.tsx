@@ -27,6 +27,7 @@ const states: Record<string, [string, string]> = {
   delivered: ["গ্রহণ করা হয়েছে", "Received"],
   cancelled: ["বাতিল", "Cancelled"],
   disputed: ["বিরোধ আছে", "Disputed"],
+  dispute_resolved: ["বিরোধ নিষ্পত্তি", "Dispute resolved"],
 };
 
 function state(locale: Locale, status: string) {
