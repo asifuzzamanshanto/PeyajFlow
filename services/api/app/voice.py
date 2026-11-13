@@ -26,6 +26,7 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session
 
 from app import advice, logistics, lots, market_data, trade
@@ -115,6 +116,10 @@ class TaskInput(Input):
     note: Annotated[str, Field(min_length=1, max_length=200)]
 
 
+class AssistanceInput(TaskInput):
+    kind: Literal["inspection", "support"]
+
+
 class Confirm(Input):
     action_id: UUID
     digits: Annotated[str, Field(min_length=4, max_length=4)]
@@ -149,6 +154,7 @@ class Task(BaseModel):
     note: str
     status: str
     created_at: datetime
+    can_resolve: bool
 
 
 ALIASES = {
@@ -501,20 +507,28 @@ def execute(db: Session, actor: Profile, tool: str, args: dict) -> dict:
             "status": result.status,
         }
     body = TaskInput.model_validate(args)
+    task_id = queue_task(db, actor, tool, body)
+    return {"task_id": str(task_id), "status": "queued"}
+
+
+def queue_task(db: Session, actor: Profile, kind: str, body: TaskInput) -> UUID:
+    if kind == "inspection" and body.lot_id is None:
+        raise HTTPException(422, "voice_choose_lot")
     if body.lot_id:
         lots.get_lot(db, actor, body.lot_id)
     task_id = db.scalar(
         insert(tasks)
         .values(
-            **body.model_dump(),
+            lot_id=body.lot_id,
+            note=body.note,
             actor_id=actor.membership_id,
             is_demo=actor.is_demo,
-            kind=tool,
+            kind=kind,
             status="open",
         )
         .returning(tasks.c.id)
     )
-    return {"task_id": str(task_id), "status": "queued"}
+    return task_id
 
 
 @router.post("/calls", response_model=Call, status_code=201)
@@ -715,27 +729,48 @@ def task_scope(actor: Profile):
     return scope & own
 
 
+def task_view(row: RowMapping, actor: Profile) -> Task:
+    can_resolve = actor.role == Role.ADMIN or (
+        actor.role == Role.AGENT
+        and row["lot_id"] is not None
+        and row["actor_id"] != actor.membership_id
+    )
+    return Task.model_validate(
+        {**row, "can_resolve": can_resolve and row["status"] == "open"}
+    )
+
+
 @router.get("/tasks", response_model=list[Task])
 def list_tasks(actor: Actor, db: DB):
-    gate(actor)
-    return list(
-        db.execute(
-            select(tasks)
-            .where(task_scope(actor))
-            .order_by(tasks.c.created_at.desc(), tasks.c.id)
-            .limit(50)
-        ).mappings()
-    )
+    rows = db.execute(
+        select(tasks)
+        .where(task_scope(actor))
+        .order_by(tasks.c.created_at.desc(), tasks.c.id)
+        .limit(50)
+    ).mappings()
+    return [task_view(row, actor) for row in rows]
+
+
+@router.post("/tasks", response_model=Task, status_code=201)
+def request_assistance(body: AssistanceInput, actor: Actor, db: DB):
+    require_role(actor, Role.FARMER, Role.BUYER, Role.AGENT)
+    task_id = queue_task(db, actor, body.kind, body)
+    audit(db, actor, "assistance.requested", task_id)
+    row = db.execute(select(tasks).where(tasks.c.id == task_id)).mappings().one()
+    db.commit()
+    return task_view(row, actor)
 
 
 @router.post("/tasks/{task_id}/resolve", response_model=Task)
 def resolve_task(task_id: UUID, actor: Actor, db: DB):
-    gate(actor)
     require_role(actor, Role.AGENT, Role.ADMIN)
+    scope = task_scope(actor)
+    if actor.role == Role.AGENT:
+        scope &= tasks.c.lot_id.is_not(None) & (tasks.c.actor_id != actor.membership_id)
     row = (
         db.execute(
             update(tasks)
-            .where(tasks.c.id == task_id, task_scope(actor))
+            .where(tasks.c.id == task_id, scope, tasks.c.status == "open")
             .values(status="resolved")
             .returning(tasks)
         )
@@ -743,7 +778,14 @@ def resolve_task(task_id: UUID, actor: Actor, db: DB):
         .one_or_none()
     )
     if row is None:
-        raise HTTPException(404, "not_found")
-    audit(db, actor, "voice.task_resolved", task_id)
+        row = (
+            db.execute(select(tasks).where(tasks.c.id == task_id, scope))
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            raise HTTPException(404, "not_found")
+        return task_view(row, actor)
+    audit(db, actor, "assistance.resolved", task_id)
     db.commit()
-    return row
+    return task_view(row, actor)

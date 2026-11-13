@@ -6,7 +6,17 @@ import { isLocale, type Locale } from "../../../lib/copy";
 import { api, ApiError, json } from "../../../lib/workspace-api";
 
 type Operation =
-  "read-alert" | "read-all" | "preferences" | "verify" | "resolve";
+  | "read-alert"
+  | "read-all"
+  | "preferences"
+  | "verify"
+  | "resolve"
+  | "report-payment"
+  | "review-payment"
+  | "grant-agent"
+  | "revoke-agent"
+  | "request-help"
+  | "resolve-help";
 
 export async function operate(
   locale: Locale,
@@ -55,6 +65,56 @@ export async function operate(
           json({ note: value("note"), confirmed: true }),
         );
         destination = "operations?view=disputes";
+        break;
+      case "report-payment":
+        if (!form.has("confirm")) return { error: "confirmation_required" };
+        await api(
+          `/v1/orders/${resource}/settlement`,
+          json({
+            reference: value("reference"),
+            request_key: value("request_key"),
+            confirm: true,
+          }),
+        );
+        destination = `orders/${resource}`;
+        break;
+      case "review-payment":
+        if (!form.has("confirm")) return { error: "confirmation_required" };
+        await api(
+          `/v1/orders/${resource}/settlement/${encodeURIComponent(value("payment_id"))}/review`,
+          json({
+            decision: value("decision"),
+            evidence_reference: value("evidence_reference"),
+            confirm: true,
+          }),
+        );
+        destination = "operations?view=settlements";
+        break;
+      case "grant-agent":
+      case "revoke-agent":
+        if (!form.has("confirm")) return { error: "confirmation_required" };
+        await api(
+          `/v1/delegations/${resource || encodeURIComponent(value("agent_id"))}`,
+          {
+            method: operation === "grant-agent" ? "PUT" : "DELETE",
+          },
+        );
+        destination = "agents";
+        break;
+      case "request-help":
+        await api(
+          "/v1/voice/tasks",
+          json({
+            kind: value("kind"),
+            note: value("note"),
+            lot_id: resource || null,
+          }),
+        );
+        destination = "help";
+        break;
+      case "resolve-help":
+        await api(`/v1/voice/tasks/${resource}/resolve`, { method: "POST" });
+        destination = "help";
         break;
       default:
         return { error: "invalid_input" };

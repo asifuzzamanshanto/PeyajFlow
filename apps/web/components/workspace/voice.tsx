@@ -106,20 +106,19 @@ export async function VoicePage({
                   {t("মজুতের পরিদর্শন", "Lot inspections")}
                 </Link>
               )}
-              {task.status === "open" &&
-                ["admin", "agent"].includes(actor.role) && (
-                  <WorkspaceForm
-                    locale={locale}
-                    action={pilotMutate.bind(
-                      null,
-                      locale,
-                      "resolve-task",
-                      task.id,
-                      "",
-                    )}
-                    label={t("সম্পন্ন হিসেবে চিহ্নিত করুন", "Mark resolved")}
-                  />
-                )}
+              {task.can_resolve && (
+                <WorkspaceForm
+                  locale={locale}
+                  action={pilotMutate.bind(
+                    null,
+                    locale,
+                    "resolve-task",
+                    task.id,
+                    "",
+                  )}
+                  label={t("সম্পন্ন হিসেবে চিহ্নিত করুন", "Mark resolved")}
+                />
+              )}
             </li>
           ))}
         </ul>

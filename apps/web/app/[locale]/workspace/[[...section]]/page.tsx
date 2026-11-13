@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandLogo } from "../../../../components/brand-logo";
 import { AdvicePage } from "../../../../components/workspace/advice";
+import { AgentsPage } from "../../../../components/workspace/agents";
 import { AlertsPage } from "../../../../components/workspace/alerts";
+import { AssistancePage } from "../../../../components/workspace/assistance";
 import { LogisticsPage } from "../../../../components/workspace/logistics";
 import { OfflineNotice } from "../../../../components/workspace/offline";
 import { OperationsPage } from "../../../../components/workspace/operations";
@@ -63,6 +65,9 @@ function destinations(locale: Locale, actor: Profile) {
     );
   pages.push(["prices", local(locale, "বাজারদর", "Market prices")]);
   pages.push(["alerts", local(locale, "বিজ্ঞপ্তি", "Alerts")]);
+  pages.push(["help", local(locale, "সহায়তা", "Help")]);
+  if (actor.role === "farmer")
+    pages.push(["agents", local(locale, "সহায়তাকারী", "Agent access")]);
   if (actor.role === "admin")
     pages.push(["operations", local(locale, "পরিচালনা", "Operations")]);
   if (actor.role === "admin")
@@ -95,6 +100,16 @@ function Overview({
               ? local(locale, "যাচাইকৃত অ্যাকাউন্ট", "Verified account")
               : local(locale, "নিজস্ব তথ্য", "Self-reported profile")}
           </p>
+          {actor.role === "agent" && actor.verified && (
+            <p>
+              {local(
+                locale,
+                "কৃষককে দেওয়ার আইডি",
+                "Agent access ID to share with a farmer",
+              )}{" "}
+              · <code>{actor.membership_id}</code>
+            </p>
+          )}
         </div>
         <WorkspaceForm
           locale={locale}
@@ -189,6 +204,8 @@ async function panel(
     if (page === "orders") return OrdersPage(context);
     if (page === "prices") return PricePage({ ...context, filters });
     if (page === "alerts") return AlertsPage(context);
+    if (page === "help") return AssistancePage(context);
+    if (page === "agents") return AgentsPage(context);
     if (page === "operations") return OperationsPage({ ...context, filters });
   }
   if (page === "imports" && !child) return ImportsPage({ ...context, id });

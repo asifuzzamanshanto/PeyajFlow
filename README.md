@@ -39,6 +39,8 @@ uv run --env-file .env uvicorn app.main:app --reload
 5. As the demo operator, use **Market imports** to stage a CSV, inspect provenance and skipped rows, and approve the observations. Use **Market prices** to review the data and the 7-, 14-, or 28-day outlook. Open **Hold or sell** from a lot to compare proceeds under explicit loss, freight, storage, financing, and fee assumptions.
 6. Use **Call simulator** as Rahim to accept a separate active offer. Select its lot and offer, review the Bangla terms, and enter the demo keypad code. The same order appears in the farmer and buyer workspaces. The party responsible for transport can request a quote from that order. The operator can record a quote received from a transporter, and the responsible party can select it.
 7. Open **Alerts** to review activity on offers, orders, and transport. Sign in as the operator and open **Operations** to review verifications, market data health, open disputes, and audit events.
+8. As Rahim, confirm dispatch. As Nadia, confirm receipt and enter a fictional transaction reference under **Settlement**. The operator can review independent evidence in **Operations → Settlements**. Both parties see the decision. The system records off-platform payment evidence and never moves funds.
+9. As Jalil, copy the agent access ID from the workspace overview. Sign in as Salma and grant that ID access under **Agent access**. Jalil can register an unlisted lot for Salma. Salma can request an inspection from the lot page, follow the request under **Help**, and revoke access at any time.
 
 ### Market imports, forecasts, and call simulation
 

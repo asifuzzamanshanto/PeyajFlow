@@ -130,4 +130,5 @@ export type VoiceTask = {
   note: string;
   status: string;
   created_at: string;
+  can_resolve: boolean;
 };

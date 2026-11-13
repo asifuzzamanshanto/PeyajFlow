@@ -38,6 +38,7 @@ from app.auth import (
     audit,
     delegations,
     require_role,
+    verified_agents,
 )
 from app.database import DB, metadata
 
@@ -198,13 +199,16 @@ def scoped_lots(actor: Profile):
     if actor.role == Role.FARMER:
         return scope & (lots.c.owner_membership_id == actor.membership_id)
     if actor.role == Role.AGENT:
-        return scope & lots.c.owner_membership_id.in_(
-            select(delegations.c.farmer_membership_id).where(
-                delegations.c.agent_membership_id == actor.membership_id
-            )
-        )
+        return scope & lots.c.owner_membership_id.in_(delegated_owners(actor))
     require_role(actor, Role.ADMIN)
     return scope
+
+
+def delegated_owners(actor: Profile):
+    return select(delegations.c.farmer_membership_id).where(
+        delegations.c.agent_membership_id == actor.membership_id,
+        delegations.c.agent_membership_id.in_(verified_agents(actor.is_demo)),
+    )
 
 
 def get_lot(
@@ -310,8 +314,25 @@ def list_lots(
     return [view(row) for row in rows]
 
 
-def register_lot(body: LotCreate, actor: Profile, db: Session):
-    require_role(actor, Role.FARMER)
+def register_lot(
+    body: LotCreate, actor: Profile, db: Session, *, owner: UUID | None = None
+):
+    if owner is None:
+        require_role(actor, Role.FARMER)
+        owner = actor.membership_id
+    else:
+        require_role(actor, Role.AGENT)
+        if (
+            db.scalar(
+                delegated_owners(actor)
+                .where(delegations.c.farmer_membership_id == owner)
+                .with_for_update(read=True)
+            )
+            is None
+        ):
+            raise HTTPException(404, "not_found")
+        if body.listed:
+            raise HTTPException(422, "farmer_listing_required")
     kg = kilograms(body.quantity, body.unit, body.kg_per_maund)
     request_hash = payload_hash(body)
     fields = body.model_dump(
@@ -322,7 +343,7 @@ def register_lot(body: LotCreate, actor: Profile, db: Session):
             pg_insert(lots)
             .values(
                 **fields,
-                owner_membership_id=actor.membership_id,
+                owner_membership_id=owner,
                 is_demo=actor.is_demo,
                 create_key=body.request_key,
                 create_hash=request_hash,
@@ -340,7 +361,7 @@ def register_lot(body: LotCreate, actor: Profile, db: Session):
         row = (
             db.execute(
                 select(lots).where(
-                    lots.c.owner_membership_id == actor.membership_id,
+                    lots.c.owner_membership_id == owner,
                     lots.c.create_key == body.request_key,
                 )
             )
@@ -368,6 +389,13 @@ def register_lot(body: LotCreate, actor: Profile, db: Session):
 @router.post("", response_model=LotView, status_code=201)
 def create_lot(body: LotCreate, actor: Actor, db: DB):
     result = register_lot(body, actor, db)
+    db.commit()
+    return result
+
+
+@router.post("/delegated/{farmer_id}", response_model=LotView, status_code=201)
+def create_delegated_lot(farmer_id: UUID, body: LotCreate, actor: Actor, db: DB):
+    result = register_lot(body, actor, db, owner=farmer_id)
     db.commit()
     return result
 

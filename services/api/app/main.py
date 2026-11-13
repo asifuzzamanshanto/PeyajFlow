@@ -26,6 +26,7 @@ from app import (
     notifications,
     rate_limits,
     risk,
+    settlement,
     telephony,
     trade,
     voice,
@@ -138,6 +139,7 @@ app.include_router(voice.router)
 app.include_router(telephony.router)
 app.include_router(notifications.router)
 app.include_router(admin.router)
+app.include_router(settlement.router)
 
 
 @app.get("/health/live", response_model=Liveness, tags=["Health"])

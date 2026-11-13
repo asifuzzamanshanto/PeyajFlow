@@ -8,11 +8,13 @@ import type {
   OfferDetail,
   Order,
   OrderDetail,
+  Settlement,
 } from "../../lib/workspace-types";
 import { timeLabel } from "../../lib/workspace-values";
 import { DecimalField, Details, RequestKey } from "./fields";
 import { WorkspaceForm } from "./form";
 import { taka } from "./market";
+import { OrderSettlement } from "./settlement";
 import { kg } from "./stock";
 
 const states: Record<string, [string, string]> = {
@@ -347,7 +349,10 @@ export async function OrderPage({
   id: string;
   actor: Profile;
 }) {
-  const order = await api<OrderDetail>(`/v1/orders/${id}`);
+  const [order, settlement] = await Promise.all([
+    api<OrderDetail>(`/v1/orders/${id}`),
+    api<Settlement>(`/v1/orders/${id}/settlement`),
+  ]);
   const actions = [];
   if (actor.role === "farmer" && order.status === "confirmed")
     actions.push(["dispatch", "পাঠানো নিশ্চিত করুন", "Confirm dispatch"]);
@@ -402,6 +407,12 @@ export async function OrderPage({
           </Details>
         ))}
       </section>
+      <OrderSettlement
+        locale={locale}
+        id={id}
+        data={settlement}
+        mayReport={actor.role === "buyer" && order.status === "delivered"}
+      />
       <section className="work-panel">
         <h2>{local(locale, "অর্ডারের ইতিহাস", "Order history")}</h2>
         <ul className="work-history">

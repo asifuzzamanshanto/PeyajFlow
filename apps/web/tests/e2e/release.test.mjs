@@ -53,7 +53,10 @@ async function checkScreen(page, file) {
   const output = process.env.RELEASE_SCREENSHOT_DIR;
   if (output && file) {
     await mkdir(output, { recursive: true });
-    await page.screenshot({ path: path.join(output, file) });
+    await page.screenshot({
+      path: path.join(output, file),
+      fullPage: file === "completion-settlement-360.png",
+    });
   }
 }
 
@@ -67,6 +70,7 @@ test(
     try {
       const farmer = await signIn(browser, "farmer", 360);
       const admin = await signIn(browser, "admin", 1440);
+      const buyer = await signIn(browser, "buyer", 1280);
       const { token: farmerToken } = await post("auth/demo", {
         identity: "farmer",
       });
@@ -194,6 +198,99 @@ test(
       assert.equal(await admin.locator("html").getAttribute("lang"), "bn");
       assert.equal(new URL(admin.url()).searchParams.get("resource_id"), order);
       await checkScreen(admin, "release-audit-bn-768.png");
+
+      await buyer.goto(`${base}/orders/${order}`);
+      const receive = buyer
+        .locator("details")
+        .filter({ hasText: "Confirm receipt" });
+      await receive.locator("summary").click();
+      await receive.getByRole("checkbox").check();
+      await receive.getByRole("button", { name: "Confirm receipt" }).click();
+      const report = buyer
+        .locator("details")
+        .filter({ hasText: "Report payment" });
+      await report.locator("summary").click();
+      const reference = `FIXTURE-${randomUUID().slice(0, 8)}`;
+      await report.getByLabel("Transaction reference").fill(reference);
+      await report.getByRole("checkbox").check();
+      await report
+        .getByRole("button", { name: "Submit payment report" })
+        .click();
+      await buyer.getByText("Payment reported", { exact: true }).waitFor();
+      await admin.goto(`${base}/operations?view=settlements`);
+      await admin
+        .getByRole("heading", { name: "Review payment reports" })
+        .waitFor();
+      const entry = admin.locator("li").filter({ hasText: reference });
+      await entry.locator("summary").click();
+      await entry.getByLabel("Review decision").selectOption("verified");
+      await entry
+        .getByLabel("Independent evidence reference")
+        .fill("FIXTURE-INDEPENDENT-CHECK");
+      await entry.getByRole("checkbox").check();
+      await entry.getByRole("button", { name: "Save payment review" }).click();
+      await entry.waitFor({ state: "hidden" });
+      await farmer.goto(`${base}/orders/${order}`);
+      await farmer.getByText("Payment verified", { exact: true }).waitFor();
+      await checkScreen(farmer, "completion-settlement-360.png");
+
+      const agent = await signIn(browser, "agent", 768);
+      const accessId = await agent
+        .locator("p")
+        .filter({ hasText: "Agent access ID to share with a farmer" })
+        .locator("code")
+        .textContent();
+      const secondFarmer = await signIn(browser, "farmer-two", 390);
+      await secondFarmer.goto(`${base}/agents`);
+      await secondFarmer.getByLabel("Agent access ID").fill(accessId);
+      await secondFarmer
+        .getByLabel("I authorize this agent to access and assist with my lots.")
+        .check();
+      await secondFarmer.getByRole("button", { name: "Grant access" }).click();
+      await secondFarmer.getByText(/Jalil/).waitFor();
+      await agent.goto(`${base}/stock`);
+      const registration = agent
+        .locator("details")
+        .filter({ hasText: "Register a lot" });
+      await registration.locator("summary").click();
+      await registration.getByLabel("Farmer who owns this lot").selectOption({
+        label: await registration
+          .getByRole("option", { name: /Salma/ })
+          .textContent(),
+      });
+      const newLabel = `Delegated ${randomUUID().slice(0, 8)}`;
+      await registration.getByLabel("Lot name").fill(newLabel);
+      await registration.getByLabel("Variety").fill("Taherpuri");
+      await registration.getByLabel("Storage type").fill("Ventilated shed");
+      await registration.getByLabel("Quantity", { exact: true }).fill("100");
+      await registration.getByRole("button", { name: "Save lot" }).click();
+      await agent.getByRole("heading", { name: newLabel }).waitFor();
+      const delegatedLot = new URL(agent.url()).pathname;
+      await secondFarmer.goto(`${web}${delegatedLot}`);
+      await secondFarmer.getByRole("heading", { name: newLabel }).waitFor();
+      await secondFarmer.goto(`${web}${delegatedLot}/inspections`);
+      const help = secondFarmer
+        .locator("details")
+        .filter({ hasText: "Request inspection help" });
+      await help.locator("summary").click();
+      const note = `Please inspect ${newLabel}`;
+      await help.getByLabel("What help do you need?").fill(note);
+      await help.getByRole("button", { name: "Send request" }).click();
+      await secondFarmer.getByText(note, { exact: true }).waitFor();
+      await agent.goto(`${base}/help`);
+      const request = agent.locator("li").filter({ hasText: note });
+      await request.getByRole("button", { name: "Mark resolved" }).click();
+      await request.getByText("Resolved", { exact: true }).waitFor();
+      await secondFarmer.goto(`${base}/agents`);
+      const revoke = secondFarmer
+        .locator("details")
+        .filter({ hasText: "Revoke access" });
+      await revoke.locator("summary").click();
+      await revoke.getByRole("checkbox").check();
+      await revoke.getByRole("button", { name: "Confirm revocation" }).click();
+      await secondFarmer.getByText("No active grants on this page.").waitFor();
+      await agent.goto(`${web}${delegatedLot}`);
+      await agent.getByText("This record was not found.").waitFor();
     } finally {
       await browser.close();
     }

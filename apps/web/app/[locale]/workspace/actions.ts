@@ -87,6 +87,7 @@ export async function signOut(locale: Locale): Promise<FormState> {
 type Operation =
   | "profile"
   | "lot-create"
+  | "lot-create-delegated"
   | "lot-edit"
   | "movement"
   | "verify"
@@ -137,6 +138,7 @@ export async function mutate(
         destination = base;
         break;
       case "lot-create":
+      case "lot-create-delegated":
       case "lot-edit": {
         const details = {
           ...fields(
@@ -150,9 +152,11 @@ export async function mutate(
           ),
           listed: form.has("listed"),
         };
-        if (operation === "lot-create") {
+        if (operation !== "lot-edit") {
           const result = await api<{ id: string }>(
-            "/v1/lots",
+            operation === "lot-create"
+              ? "/v1/lots"
+              : `/v1/lots/delegated/${encodeURIComponent(text("farmer_id"))}`,
             json({
               ...details,
               ...units(),

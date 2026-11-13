@@ -8,6 +8,7 @@ import type { Inspection, Lot, Risk } from "../../lib/workspace-types";
 import { dhakaToday, numberLabel, timeLabel } from "../../lib/workspace-values";
 import { DecimalField, Details, Field } from "./fields";
 import { WorkspaceForm } from "./form";
+import { AssistanceForm } from "./assistance";
 
 const labels: Record<string, [string, string]> = {
   no_obvious_defect: ["চোখে পড়ার মতো ত্রুটি নেই", "No obvious visible defect"],
@@ -326,6 +327,19 @@ export async function InspectionsPage({
         {lot.label}
       </Link>
       <h1>{local(locale, "পরিদর্শন ও ছবি", "Inspections and photos")}</h1>
+      {actor.role === "farmer" && (
+        <section className="work-panel">
+          <Details
+            label={local(
+              locale,
+              "পরিদর্শনে সাহায্য চান",
+              "Request inspection help",
+            )}
+          >
+            <AssistanceForm locale={locale} lot={id} />
+          </Details>
+        </section>
+      )}
       <Link className="work-link" href={`${base}/stock/${id}/risk`}>
         {local(locale, "সংরক্ষণের ঝুঁকি", "Storage risk")}
       </Link>

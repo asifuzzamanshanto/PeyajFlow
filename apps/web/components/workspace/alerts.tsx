@@ -41,6 +41,12 @@ const titles: Record<string, [string, string]> = {
     "অর্ডারের বিরোধ নিষ্পত্তি হয়েছে",
     "Order dispute resolved",
   ],
+  "payment.reported": ["অর্থপ্রদানের তথ্য জমা হয়েছে", "Payment reported"],
+  "payment.verified": ["অর্থপ্রদান যাচাই হয়েছে", "Payment verified"],
+  "payment.rejected": [
+    "অর্থপ্রদানের তথ্য প্রত্যাখ্যাত হয়েছে",
+    "Payment report rejected",
+  ],
   "logistics.requested": [
     "পরিবহনের দর চাওয়া হয়েছে",
     "Transport quotes requested",

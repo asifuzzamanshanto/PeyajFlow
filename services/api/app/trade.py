@@ -246,13 +246,15 @@ def offer_expired(row: RowMapping) -> bool:
     )
 
 
+def order_total(quantity: Decimal, price: Decimal) -> Decimal:
+    return (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 def offer_view(row: RowMapping) -> OfferView:
     status = row["status"]
     if status in ACTIVE_OFFERS and offer_expired(row):
         status = "expired"
-    total = (row["quantity_kg"] * row["price_bdt_kg"]).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
+    total = order_total(row["quantity_kg"], row["price_bdt_kg"])
     return OfferView.model_validate({**row, "status": status, "total_bdt": total})
 
 

@@ -97,6 +97,23 @@ export type Order = {
 export type OrderDetail = Order & {
   activity: { action: string; recorded_at: string; by_system: boolean }[];
 };
+export type Payment = {
+  id: string;
+  status: "reported" | "verified" | "rejected";
+  reference: string;
+  reported_at: string;
+  reviewed_at: string | null;
+};
+export type Settlement = {
+  status: "pending" | "reported" | "verified";
+  total_bdt: string;
+  reports: Payment[];
+};
+export type Delegation = {
+  membership_id: string;
+  name: string;
+  district: string;
+};
 export type Inspection = {
   id: string;
   observed_on: string;

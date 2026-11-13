@@ -8,6 +8,7 @@ import { numberLabel, timeLabel } from "../../lib/workspace-values";
 import { Details, Field } from "./fields";
 import { WorkspaceForm } from "./form";
 import { priceType } from "./prices";
+import { SettlementQueue } from "./settlement";
 import { kg } from "./stock";
 
 type Overview = {
@@ -439,6 +440,7 @@ export async function OperationsPage(context: Page) {
     ["accounts", local(locale, "যাচাই", "Verifications"), Accounts],
     ["quality", local(locale, "তথ্যের মান", "Data quality"), Quality],
     ["disputes", local(locale, "বিরোধ", "Disputes"), Disputes],
+    ["settlements", local(locale, "অর্থপ্রদান", "Settlements"), SettlementQueue],
     ["audit", local(locale, "নিরীক্ষা", "Audit"), AuditPage],
   ] as const;
   const selected = pages.find(([id]) => id === filters.view) ?? pages[0];

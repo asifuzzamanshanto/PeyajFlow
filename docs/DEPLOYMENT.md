@@ -49,10 +49,14 @@ pg_restore --dbname="$RESTORE_DATABASE" --exit-on-error --single-transaction \
 psql "$RESTORE_DATABASE" -Atc 'SELECT version_num FROM alembic_version'
 ```
 
-Verify the restored revision, representative inventory balances and order history, inbox records, and a private photo retrieved from the matching bucket backup. Then run readiness and the smoke command against the isolated restore. Use fictitious data for rehearsals when possible. The CI container job exercises the PostgreSQL dump and restore path with disposable data.
+Verify the restored revision, representative inventory balances and order history, payment reports, inbox records, and a private photo retrieved from the matching bucket backup. Then run readiness and the smoke command against the isolated restore. Use fictitious data for rehearsals when possible. The CI container job exercises the PostgreSQL dump and restore path with disposable data.
 
 ## Monitor and roll back
 
 - Monitor readiness, 5xx and 429 rates, provider queue counts, and the age of the last verified backup. The API includes `X-Request-ID` and logs production request method, route template, status, and duration. Record request IDs when investigating an incident.
 - Before switching back to a previous web or API deployment, compare its expected API and Alembic revisions. Use the previous API image only when compatible with the current schema. For incompatible changes, pause writes and decide whether a reviewed forward migration or a coordinated database and photo restore is appropriate. Identify records accepted after the restore point and reconcile them before reopening trades.
 - Re-run release smoke and verify a known order, inbox, and private photo after recovery. Record the restored revisions and any unresolved delivery or order state.
+
+## Review settlement evidence
+
+After receipt, the buyer can report a reference for the full goods total. A reported payment stays unverified until an operator checks independent evidence of the amount and receipt, such as an authorized statement or separately confirmed receipt. Enter an internal evidence reference under **Operations → Settlements**. Reference fields should contain opaque identifiers. Keep bank account details and statements in the authorized evidence system. A rejected report stays in history, and the buyer can submit a corrected reference. Verification records the operator’s decision and alerts both parties. Automated settlement and transfers require a separate provider integration.

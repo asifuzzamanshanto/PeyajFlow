@@ -13,6 +13,30 @@ export const roles: Record<Role, [string, string]> = {
 };
 
 const errors: Record<string, [string, string]> = {
+  verified_agent_not_found: [
+    "যাচাইকৃত সহায়তাকারী পাওয়া যায়নি।",
+    "This verified agent could not be found.",
+  ],
+  farmer_listing_required: [
+    "শুধু কৃষক মজুত তালিকাভুক্ত করতে পারবেন।",
+    "Only the farmer can list this lot for buyers.",
+  ],
+  payment_requires_delivery: [
+    "পণ্য গ্রহণের পর অর্থপ্রদানের তথ্য নথিভুক্ত বা যাচাই করুন।",
+    "Payment evidence can be recorded or reviewed after delivery is confirmed.",
+  ],
+  payment_report_exists: [
+    "এই অর্ডারের একটি অর্থপ্রদানের প্রতিবেদন রয়েছে।",
+    "This order already has an active payment report.",
+  ],
+  payment_already_reviewed: [
+    "অর্থপ্রদানের প্রতিবেদনটি ইতিমধ্যে পর্যালোচনা করা হয়েছে।",
+    "This payment report has already been reviewed.",
+  ],
+  payment_independent_evidence_required: [
+    "ক্রেতার তথ্যের বাইরে যাচাইয়ের আলাদা রেফারেন্স লিখুন।",
+    "Enter a separate reference for your independent review.",
+  ],
   credentials_invalid: [
     "অ্যাকাউন্ট আইডি ও পাসওয়ার্ড মিলেনি।",
     "The account ID or password is incorrect.",

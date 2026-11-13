@@ -3,7 +3,7 @@ import { mutate } from "../../app/[locale]/workspace/actions";
 import type { Locale } from "../../lib/copy";
 import { api, type Profile } from "../../lib/workspace-api";
 import { local } from "../../lib/workspace-copy";
-import type { Lot, LotDetail } from "../../lib/workspace-types";
+import type { Delegation, Lot, LotDetail } from "../../lib/workspace-types";
 import { dhakaToday, numberLabel, timeLabel } from "../../lib/workspace-values";
 import { DecimalField, Details, Field, GradeField, RequestKey } from "./fields";
 import { WorkspaceForm } from "./form";
@@ -52,10 +52,12 @@ function LotFields({
   locale,
   district,
   lot,
+  mayList = true,
 }: {
   locale: Locale;
   district: string;
   lot?: Lot;
+  mayList?: boolean;
 }) {
   const date = dhakaToday();
   return (
@@ -115,18 +117,20 @@ function LotFields({
         </Field>
         <GradeField locale={locale} value={lot?.grade} />
       </div>
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          name="listed"
-          defaultChecked={lot?.listed ?? false}
-        />
-        {local(
-          locale,
-          "ক্রেতাদের জন্য তালিকাভুক্ত করুন",
-          "List this lot for buyers",
-        )}
-      </label>
+      {mayList && (
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            name="listed"
+            defaultChecked={lot?.listed ?? false}
+          />
+          {local(
+            locale,
+            "ক্রেতাদের জন্য তালিকাভুক্ত করুন",
+            "List this lot for buyers",
+          )}
+        </label>
+      )}
     </>
   );
 }
@@ -171,9 +175,12 @@ export async function StockPage({
   offset: number;
   unverified?: boolean;
 }) {
-  const lots = await api<Lot[]>(
-    `/v1/lots?offset=${offset}&unverified_only=${unverified}`,
-  );
+  const [lots, delegated] = await Promise.all([
+    api<Lot[]>(`/v1/lots?offset=${offset}&unverified_only=${unverified}`),
+    actor.role === "agent" && actor.verified
+      ? api<Delegation[]>(`/v1/delegations`)
+      : [],
+  ]);
   return (
     <>
       <h1>
@@ -186,16 +193,49 @@ export async function StockPage({
           {local(locale, "সব মজুত দেখুন", "Show all lots")}
         </Link>
       )}
-      {actor.role === "farmer" && (
+      {(actor.role === "farmer" || delegated.length > 0) && (
         <section className="work-panel">
           <Details label={local(locale, "নতুন মজুত নিবন্ধন", "Register a lot")}>
             <WorkspaceForm
               locale={locale}
-              action={mutate.bind(null, locale, "lot-create", "", "")}
+              action={mutate.bind(
+                null,
+                locale,
+                actor.role === "agent" ? "lot-create-delegated" : "lot-create",
+                "",
+                "",
+              )}
               label={local(locale, "মজুত সংরক্ষণ করুন", "Save lot")}
             >
               <RequestKey />
-              <LotFields locale={locale} district={actor.district} />
+              {actor.role === "agent" && (
+                <Field
+                  label={local(
+                    locale,
+                    "মজুতের মালিক",
+                    "Farmer who owns this lot",
+                  )}
+                >
+                  <select name="farmer_id" required defaultValue="">
+                    <option value="" disabled>
+                      {local(locale, "বেছে নিন", "Choose a farmer")}
+                    </option>
+                    {delegated.map((farmer) => (
+                      <option
+                        key={farmer.membership_id}
+                        value={farmer.membership_id}
+                      >
+                        {farmer.name} · {farmer.district}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+              <LotFields
+                locale={locale}
+                district={actor.district}
+                mayList={actor.role === "farmer"}
+              />
               <UnitFields locale={locale} />
             </WorkspaceForm>
           </Details>

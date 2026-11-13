@@ -43,6 +43,15 @@ Last updated November 13, 2026 (Asia/Dhaka).
 | F16 | Responsive alerts and operations, keyboard navigation, bilingual loading and error states, offline feedback, and preserved query filters on locale switch | Browser evidence is listed under verification |
 | F17 | Provisioned production accounts, rate limits, sanitized request logging, serialized migrations, Render and Vercel configuration, release smoke, CI backup drill, and deployment runbook | Production build, provider configuration schema validation, migration rollback/re-upgrade, metadata check, API integration tests, and loopback smoke |
 
+### End-to-end acceptance follow-up
+
+| Workflow | Delivered |
+| --- | --- |
+| Delivery and settlement | After delivery, the buyer reports an off-platform payment reference for the goods total. An operator checks independent evidence and verifies or rejects it. Rejected reports stay in history. Both parties see the decision and receive an alert. References are excluded from the searchable audit projection |
+| Farmer and agent | A farmer grants or revokes access using a verified agent’s shared ID. The agent can register unlisted lots on behalf of the farmer, weigh and inspect assigned lots, and respond to inspection requests. Listing and offer decisions remain with the farmer |
+| Assistance | Signed-in users can request operator help. A farmer can request inspection help from a lot page. The web and the Bangla call simulator use the same role-scoped queue |
+| Private object storage | The production S3 adapter was verified against a local Garage bucket. The uploaded and retrieved sanitized JPEG matched its stored checksum. Anonymous and cross-account reads were denied. The hosted bucket still requires acceptance testing |
+
 ## Verification and delivery
 
 | Check | Status |
@@ -63,6 +72,9 @@ Last updated November 13, 2026 (Asia/Dhaka).
 | F13–F17 API and schema | 21 API tests passed on disposable PostgreSQL 18.6. Ruff lint and format, rollback from `0014_release` to `0010_voice`, re-upgrade, and Alembic metadata check passed. Render and Vercel configurations passed checks against the published schemas |
 | F13–F17 web | Four web unit tests and three Edge/Playwright workflows passed with the production build. Checked screens reported zero automated axe violations and no horizontal overflow. The pilot verified that the inspection form sends a large photo batch within the upload budget. [360 px alerts](docs/design-reviews/release-alerts-360.png), [768 px Bangla audit](docs/design-reviews/release-audit-bn-768.png), and [1440 px operations](docs/design-reviews/release-operations-1440.png) |
 | F17 release smoke and restore | Demo and production-mode loopback smoke passed. Browser sign-in used an operator-provisioned passphrase and an HTTP-only secure cookie. PostgreSQL 16 `pg_dump` and `pg_restore` into a separate database preserved revision `0014_release` and the seeded account count |
+| Full project acceptance | 23 API tests, four web unit tests, three Playwright workflows, and the production build passed against the final source. Tested on a fresh PostgreSQL 16 Compose stack. Rerunning the demo seed preserved exactly 108 synthetic fixture observations. Axe reported zero violations on checked screens. [Mobile receipt with settlement](docs/design-reviews/completion-settlement-360.png) |
+| Full project recovery | PostgreSQL 16 restore preserved `0015_settlement` and counts of lots, ledger events, orders, alerts, and verified reports. Rollback to `0014_release`, re-upgrade, and the Alembic metadata check passed on the restored copy |
+| Full project production-mode smoke | A provisioned account could sign in and out with a secure, HTTP-only cookie. Demo login was disabled. Private Garage S3 upload, checksum, authorized retrieval, metadata removal, and denied anonymous and cross-account reads passed |
 | GitHub PR and CI run | Pending an authorized remote |
 | Render and Vercel deployment | Configuration prepared and schema-checked. Preview and production provisioning, HTTPS smoke and private bucket verification pending authorized services |
 | Pilot and field validation | Pending pilot participants and real market and storage evidence |
@@ -95,8 +107,8 @@ Last updated November 13, 2026 (Asia/Dhaka).
 
 - F00 uses a single Alembic baseline so readiness can detect an empty or stale schema from the start. The identity feature introduces the first business tables.
 - Next.js forwards authenticated requests server-side. The browser uses an HTTP-only cookie and same-origin actions. Production uses operator-provisioned accounts and passphrases. Production OTP enrollment awaits provider integration.
-- Offers do not reserve stock until the recipient confirms. Confirmed stock is reserved for up to 48 hours. The operator can view the same order history as the parties. Payment verification is outside this pilot milestone.
-- Private photo storage retains metadata-stripped JPEG evidence. The local adapter is verified. The S3-compatible adapter requires verification with a configured private bucket.
+- Offers do not reserve stock until the recipient confirms. Confirmed stock is reserved for up to 48 hours. The operator can view the same order history as the parties. Settlement is a manual evidence workflow and does not initiate payments or escrow.
+- Private photo storage retains metadata-stripped JPEG evidence. Both the filesystem and S3-compatible adapters were exercised locally. The configured hosted bucket requires its own privacy and restore checks.
 - Image checks assess photo quality. Visible condition comes from human observations and reviews. Storage-risk rules are advisory thresholds, with field calibration and a trained classifier left for later evidence.
 - Early screens use the supplied raster. The owner vector master and field review of Bangla wording remain pending.
 - Market forecasts use approved observations and original publication dates. The supplied sample is fictional and isolated by series. Forecast metrics are retrospective and real-series field validation is pending.
@@ -108,7 +120,8 @@ Last updated November 13, 2026 (Asia/Dhaka).
 
 ## Remaining delivery and field work
 
-- Connect the approved Git remote, run the PR checks, and record the reviewed commit and CI evidence.
+- Connect the approved Git remote, run the PR checks, and record the reviewed commit and CI evidence. The local repository has no remote and the GitHub connector found no installed repository named PeyajFlow.
 - Provision the approved Render and Vercel services and private photo bucket. Verify hosted readiness, production sign-in, authenticated photo retrieval, backup retention and isolated recovery.
 - Verify Twilio carrier calls, SMS delivery and STOP against approved numbers. Confirm live voice enrollment and Bangla prompts with pilot participants before enabling private actions.
-- Collect real price and storage evidence, test Bangla wording and mobile workflows in the field, and track follow-up calibration and branding work.
+- Collect real price and storage evidence, test Bangla wording and mobile workflows in the field, and obtain the owner’s vector artwork. Live forecasting and visual-risk calibration require representative independent evidence.
+- The post-pilot roadmap includes licensed payment and carrier integrations, independent transporter tracking, sensors, and offline drafts. The demonstrated pilot uses manual settlement, recorded transport quotes, a labeled call simulator, and offline status feedback.

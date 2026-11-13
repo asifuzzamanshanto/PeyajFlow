@@ -6,7 +6,7 @@ from secrets import token_urlsafe
 from typing import Annotated, Literal
 from uuid import UUID, uuid4, uuid5
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, StringConstraints
 from sqlalchemy import (
@@ -140,6 +140,12 @@ class SessionToken(BaseModel):
     expires_at: datetime
 
 
+class DelegationView(BaseModel):
+    membership_id: UUID
+    name: str
+    district: str
+
+
 def demo_enabled() -> bool:
     return (
         os.getenv("APP_ENV") in {"development", "test"}
@@ -255,6 +261,18 @@ def require_role(actor: Profile, *roles: Role) -> None:
         raise HTTPException(403, "role_forbidden")
 
 
+def verified_agents(is_demo: bool):
+    return (
+        select(memberships.c.id)
+        .select_from(memberships.join(users).join(organizations))
+        .where(
+            memberships.c.role == Role.AGENT,
+            users.c.verified,
+            organizations.c.is_demo == is_demo,
+        )
+    )
+
+
 def audit(
     db: Session, actor: Profile, action: str, resource_id: UUID, **context: str
 ) -> None:
@@ -323,6 +341,70 @@ def edit_profile(body: ProfileEdit, actor: Actor, db: DB) -> Profile:
     audit(db, actor, "profile.updated", actor.user_id)
     db.commit()
     return actor.model_copy(update=body.model_dump())
+
+
+@router.get("/delegations", response_model=list[DelegationView])
+def list_delegations(
+    actor: Actor, db: DB, offset: Annotated[int, Query(ge=0, le=10000)] = 0
+):
+    require_role(actor, Role.FARMER, Role.AGENT)
+    own, partner = delegations.c.farmer_membership_id, delegations.c.agent_membership_id
+    if actor.role == Role.AGENT:
+        own, partner = partner, own
+    return list(
+        db.execute(
+            select(
+                memberships.c.id.label("membership_id"), users.c.name, users.c.district
+            )
+            .select_from(
+                delegations.join(memberships, partner == memberships.c.id)
+                .join(users)
+                .join(organizations)
+            )
+            .where(own == actor.membership_id, organizations.c.is_demo == actor.is_demo)
+            .order_by(users.c.name, memberships.c.id)
+            .offset(offset)
+            .limit(50)
+        ).mappings()
+    )
+
+
+@router.put("/delegations/{agent_id}", status_code=204)
+def grant_delegation(agent_id: UUID, actor: Actor, db: DB):
+    require_role(actor, Role.FARMER)
+    eligible = db.scalar(
+        verified_agents(actor.is_demo).where(memberships.c.id == agent_id)
+    )
+    if eligible is None:
+        raise HTTPException(404, "verified_agent_not_found")
+    created = db.scalar(
+        pg_insert(delegations)
+        .values(
+            farmer_membership_id=actor.membership_id,
+            agent_membership_id=agent_id,
+        )
+        .on_conflict_do_nothing()
+        .returning(delegations.c.agent_membership_id)
+    )
+    if created:
+        audit(db, actor, "delegation.granted", agent_id)
+    db.commit()
+
+
+@router.delete("/delegations/{agent_id}", status_code=204)
+def revoke_delegation(agent_id: UUID, actor: Actor, db: DB):
+    require_role(actor, Role.FARMER)
+    revoked = db.scalar(
+        delete(delegations)
+        .where(
+            delegations.c.farmer_membership_id == actor.membership_id,
+            delegations.c.agent_membership_id == agent_id,
+        )
+        .returning(delegations.c.agent_membership_id)
+    )
+    if revoked:
+        audit(db, actor, "delegation.revoked", agent_id)
+    db.commit()
 
 
 @router.delete("/auth/session", status_code=204)
