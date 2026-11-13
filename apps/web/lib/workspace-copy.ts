@@ -13,6 +13,10 @@ export const roles: Record<Role, [string, string]> = {
 };
 
 const errors: Record<string, [string, string]> = {
+  showcase_access_invalid: [
+    "ওয়ার্কস্পেসের প্রবেশ কোডটি মিলেনি।",
+    "The workspace access code is incorrect.",
+  ],
   verified_agent_not_found: [
     "যাচাইকৃত সহায়তাকারী পাওয়া যায়নি।",
     "This verified agent could not be found.",

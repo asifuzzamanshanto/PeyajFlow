@@ -6,6 +6,8 @@ import { AdvicePage } from "../../../../components/workspace/advice";
 import { AgentsPage } from "../../../../components/workspace/agents";
 import { AlertsPage } from "../../../../components/workspace/alerts";
 import { AssistancePage } from "../../../../components/workspace/assistance";
+import { Dashboard } from "../../../../components/workspace/dashboard";
+import { WorkspaceIcon } from "../../../../components/workspace/icon";
 import { LogisticsPage } from "../../../../components/workspace/logistics";
 import { OfflineNotice } from "../../../../components/workspace/offline";
 import { OperationsPage } from "../../../../components/workspace/operations";
@@ -72,8 +74,6 @@ function destinations(locale: Locale, actor: Profile) {
     pages.push(["operations", local(locale, "পরিচালনা", "Operations")]);
   if (actor.role === "admin")
     pages.push(["imports", local(locale, "দর আমদানি", "Market imports")]);
-  if (actor.is_demo)
-    pages.push(["voice", local(locale, "কল সিমুলেটর", "Call simulator")]);
   return pages;
 }
 
@@ -88,7 +88,7 @@ function Overview({
 }) {
   return (
     <>
-      <h1>{local(locale, "ওয়ার্কস্পেস", "Workspace")}</h1>
+      <Dashboard locale={locale} actor={actor} base={base} />
       <section className="work-panel work-profile">
         <div>
           <h2>{actor.name}</h2>
@@ -117,19 +117,6 @@ function Overview({
           label={local(locale, "সাইন আউট", "Sign out")}
         />
       </section>
-      <div className="work-cards">
-        {destinations(locale, actor)
-          .slice(1)
-          .map(([path, name]) => (
-            <section key={path} className="work-panel">
-              <h2>
-                <Link className="work-link" href={`${base}/${path}`}>
-                  {name}
-                </Link>
-              </h2>
-            </section>
-          ))}
-      </div>
       <section className="work-panel">
         <Details label={local(locale, "প্রোফাইল বদলান", "Edit profile")}>
           <WorkspaceForm
@@ -183,7 +170,10 @@ async function panel(
       : 0;
   const context = { locale, actor, base, offset };
   if (!page) return <Overview {...context} />;
-  if (!destinations(locale, actor).some(([path]) => path === page)) {
+  if (
+    !(page === "voice" && actor.is_demo) &&
+    !destinations(locale, actor).some(([path]) => path === page)
+  ) {
     return (
       <p className="work-panel" role="alert">
         {errorText(locale, "role_forbidden")}
@@ -279,17 +269,27 @@ export default async function WorkspacePage({
     }
   }
   return (
-    <div className="work-shell">
+    <div
+      className={
+        actor ? "work-shell work-shell-signed" : "work-shell work-shell-guest"
+      }
+    >
       <a className="skip-link" href="#main">
         {local(locale, "মূল অংশে যান", "Skip to main content")}
       </a>
       <header className="work-header">
-        <Link className="brand-link" href={base}>
+        <Link className="brand-link" href={actor ? base : `/${locale}`}>
           <BrandLogo />
         </Link>
         <div className="work-header-actions">
-          {actor?.is_demo && (
-            <span className="work-tag">{local(locale, "ডেমো", "Demo")}</span>
+          {actor && (
+            <span className="work-user">
+              <span aria-hidden="true">{Array.from(actor.name)[0]}</span>
+              <span>
+                {actor.name}
+                <small>{local(locale, ...roles[actor.role])}</small>
+              </span>
+            </span>
           )}
           <Link
             className="language"
@@ -315,6 +315,7 @@ export default async function WorkspacePage({
               href={path ? `${base}/${path}` : base}
               aria-current={(section[0] ?? "") === path ? "page" : undefined}
             >
+              <WorkspaceIcon name={path} />
               {name}
             </Link>
           ))}
@@ -333,85 +334,99 @@ export default async function WorkspacePage({
           </>
         ) : (
           <div className="work-sign-in">
-            <h1>{local(locale, "সাইন ইন", "Sign in")}</h1>
-            {error && (
-              <p role="status" className="work-panel">
-                {errorText(locale, error)}
-              </p>
-            )}
-            {identities.length > 0 && (
+            <div className="signin-photo" aria-hidden="true" />
+            <div className="signin-content">
+              <h1>{local(locale, "সাইন ইন", "Sign in")}</h1>
+              {error && (
+                <p role="status" className="work-panel">
+                  {errorText(locale, error)}
+                </p>
+              )}
+              {identities.length > 0 && (
+                <section className="work-panel">
+                  <h2>
+                    {local(locale, "অ্যাকাউন্ট বেছে নিন", "Choose an account")}
+                  </h2>
+                  <WorkspaceForm
+                    locale={locale}
+                    action={signIn.bind(null, locale)}
+                    label={local(locale, "ওয়ার্কস্পেস খুলুন", "Open workspace")}
+                  >
+                    <Field label={local(locale, "অ্যাকাউন্ট", "Account")}>
+                      <select name="identity" required defaultValue="">
+                        <option value="" disabled>
+                          {local(locale, "বেছে নিন", "Choose an account")}
+                        </option>
+                        {identities.map((identity) => (
+                          <option
+                            key={identity.identity}
+                            value={identity.identity}
+                          >
+                            {identity.name} ·{" "}
+                            {local(locale, ...roles[identity.role])}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    {process.env.SHOWCASE_REQUIRE_CODE === "true" && (
+                      <Field
+                        label={local(
+                          locale,
+                          "প্রবেশ কোড",
+                          "Workspace access code",
+                        )}
+                      >
+                        <input
+                          name="access_key"
+                          type="password"
+                          maxLength={256}
+                          required
+                        />
+                      </Field>
+                    )}
+                  </WorkspaceForm>
+                </section>
+              )}
               <section className="work-panel">
-                <h2>{local(locale, "ডেমো অ্যাকাউন্ট", "Demo accounts")}</h2>
-                <p>
+                <h2>
                   {local(
                     locale,
-                    "কাল্পনিক অ্যাকাউন্ট বেছে নিয়ে ওয়ার্কস্পেস দেখুন।",
-                    "Choose a fictional account to explore the workspace.",
+                    "অপারেটরের দেওয়া অ্যাকাউন্ট",
+                    "Operator-issued account",
                   )}
-                </p>
+                </h2>
                 <WorkspaceForm
                   locale={locale}
-                  action={signIn.bind(null, locale)}
-                  label={local(locale, "ওয়ার্কস্পেস খুলুন", "Open workspace")}
+                  action={passwordSignIn.bind(null, locale)}
+                  label={local(
+                    locale,
+                    "পাসওয়ার্ড দিয়ে সাইন ইন",
+                    "Sign in with password",
+                  )}
                 >
-                  <Field label={local(locale, "অ্যাকাউন্ট", "Account")}>
-                    <select name="identity" required defaultValue="">
-                      <option value="" disabled>
-                        {local(locale, "বেছে নিন", "Choose an account")}
-                      </option>
-                      {identities.map((identity) => (
-                        <option
-                          key={identity.identity}
-                          value={identity.identity}
-                        >
-                          {identity.name} ·{" "}
-                          {local(locale, ...roles[identity.role])}
-                        </option>
-                      ))}
-                    </select>
+                  <Field label={local(locale, "অ্যাকাউন্ট আইডি", "Account ID")}>
+                    <input
+                      name="username"
+                      autoComplete="username"
+                      maxLength={64}
+                      required
+                    />
+                  </Field>
+                  <Field label={local(locale, "পাসওয়ার্ড", "Password")}>
+                    <input
+                      name="password"
+                      type="password"
+                      autoComplete="current-password"
+                      maxLength={256}
+                      required
+                    />
                   </Field>
                 </WorkspaceForm>
               </section>
-            )}
-            <section className="work-panel">
-              <h2>
-                {local(
-                  locale,
-                  "অপারেটরের দেওয়া অ্যাকাউন্ট",
-                  "Operator-issued account",
-                )}
-              </h2>
-              <WorkspaceForm
-                locale={locale}
-                action={passwordSignIn.bind(null, locale)}
-                label={local(
-                  locale,
-                  "পাসওয়ার্ড দিয়ে সাইন ইন",
-                  "Sign in with password",
-                )}
-              >
-                <Field label={local(locale, "অ্যাকাউন্ট আইডি", "Account ID")}>
-                  <input
-                    name="username"
-                    autoComplete="username"
-                    maxLength={64}
-                    required
-                  />
-                </Field>
-                <Field label={local(locale, "পাসওয়ার্ড", "Password")}>
-                  <input
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    maxLength={256}
-                    required
-                  />
-                </Field>
-              </WorkspaceForm>
-            </section>
-            <Link className="work-link" href={`/${locale}`}>
-              {local(locale, "সিস্টেমের অবস্থা", "System status")}
-            </Link>
+              <Link className="work-link" href={`/${locale}`}>
+                {local(locale, "প্রচ্ছদে ফিরুন", "Back to home")}
+              </Link>
+            </div>
           </div>
         )}
       </main>

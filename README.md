@@ -1,8 +1,43 @@
-# PeyajFlow
+<div align="center">
+  <img src="apps/web/public/peyajflow-logo.png" alt="PeyajFlow" width="245" />
+  <h1>PeyajFlow</h1>
+  <p>From onion stock to a confirmed sale.</p>
+  <p>
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-frontend-362142?style=flat-square" />
+    <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-backend-674173?style=flat-square" />
+    <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-database-815592?style=flat-square" />
+    <img alt="Bangla and English" src="https://img.shields.io/badge/Languages-Bangla%20%2F%20English-4d704e?style=flat-square" />
+  </p>
+</div>
 
-PeyajFlow is a Bangladesh-first onion supply-chain platform. The first milestone builds a traceable trade from a farmer's stock lot to a buyer's confirmed order, starting with the Pabna-to-Dhaka pilot.
+## 📖 Contents
 
-The bilingual pilot workspace supports inventory and trading, photo inspections, market data and forecasts, hold/sell comparisons, transport quotes, a Bangla call simulator, alerts, and an operator desk. See [work status](WORK_STATUS.md) for verification and remaining work, [deployment and recovery](docs/DEPLOYMENT.md) for release steps, and the [original handoff](PeyajFlow_Codex_Master_Handoff.md) for the product and architecture reference.
+[About](#about-the-project) · [Features](#key-features) · [Setup](#run-locally) · [Work tracker](WORK_STATUS.md) · [Deployment](docs/DEPLOYMENT.md)
+
+## About the project
+
+PeyajFlow is a Bangladesh-first onion supply-chain platform built around the Pabna-to-Dhaka trade. It connects farmer inventory, storage inspections and market evidence to a buyer's order, delivery and payment review. The public portfolio uses an isolated workspace with illustrative records and market observations.
+
+## Key features
+
+| Workspace | Workflows |
+| --- | --- |
+| Farmer | Stock, measured quantities, photo inspections, storage risk, hold/sell comparisons, offers and orders |
+| Buyer | Buying requirements, eligible supply, order negotiations, transport quotes, receipt and payment reporting |
+| Field agent | Farmer-granted access, assisted lot registration, stock verification, inspections and support |
+| Operations | Account verification, market data provenance, model health, disputes, payment review and audit history |
+
+Next.js and React serve the bilingual workspace. FastAPI, SQLAlchemy and Alembic manage the workflows and PostgreSQL schema. Inspection photos can use a private S3-compatible bucket. Docker Compose runs the database and API, and Playwright checks multi-account workflows. See the [original handoff](PeyajFlow_Codex_Master_Handoff.md) for scope and architecture.
+
+## Workspace preview
+
+![PeyajFlow landing page](docs/design-reviews/portfolio-home.png)
+
+| Farmer workspace | Buyer workspace |
+| --- | --- |
+| ![Farmer dashboard](docs/design-reviews/portfolio-farmer.png) | ![Buyer dashboard](docs/design-reviews/portfolio-buyer.png) |
+
+[Bangla mobile workspace](docs/design-reviews/portfolio-farmer-bn-mobile.png) · [Operations workspace](docs/design-reviews/portfolio-operations.png)
 
 ## Run locally
 
@@ -10,7 +45,7 @@ Install Node.js 22 or later, pnpm 10.34.9, and Docker with Compose. Python 3.13 
 
 ```sh
 docker compose up --build -d
-docker compose exec api python -m app.seed
+docker compose exec api python -m app.seed_showcase
 pnpm install --frozen-lockfile
 pnpm dev
 ```

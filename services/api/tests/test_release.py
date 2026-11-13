@@ -345,3 +345,32 @@ def test_production_password_rotation_limits_and_redacted_validation(
         "/v1/auth/password", json={"username": username, "password": replacement}
     )
     assert limited.status_code == 429 and int(limited.headers["retry-after"]) > 0
+
+
+@requires_db
+def test_hosted_account_chooser_requires_code_and_keeps_call_tools_disabled(
+    pilot, monkeypatch
+):
+    client, _, _ = pilot
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("SHOWCASE_ACCESS_KEY", raising=False)
+    assert client.get("/v1/auth/demo").status_code == 404
+    code = "fixture-portfolio-access-key-only"
+    monkeypatch.setenv("SHOWCASE_ACCESS_KEY", code)
+    assert client.get("/v1/auth/demo").status_code == 200
+    assert client.post("/v1/auth/demo", json={"identity": "admin"}).status_code == 401
+    assert (
+        client.post(
+            "/v1/auth/demo", json={"identity": "admin", "access_key": "invalid"}
+        ).status_code
+        == 401
+    )
+    signed_in = client.post(
+        "/v1/auth/demo", json={"identity": "admin", "access_key": code}
+    )
+    assert signed_in.status_code == 201
+    headers = {"Authorization": f"Bearer {signed_in.json()['token']}"}
+    assert client.get("/v1/admin/overview", headers=headers).status_code == 200
+    assert client.post("/v1/voice/calls", headers=headers).status_code == 404
+    monkeypatch.delenv("SHOWCASE_ACCESS_KEY")
+    assert client.get("/v1/me", headers=headers).status_code == 401

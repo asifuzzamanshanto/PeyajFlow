@@ -34,7 +34,7 @@ export async function apiResponse(path: string, init: RequestInit = {}) {
       ...init,
       headers,
       cache: "no-store",
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(process.env.VERCEL === "1" ? 48_000 : 12_000),
     });
   } catch {
     throw new ApiError(503, "service_unavailable");

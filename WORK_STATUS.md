@@ -11,6 +11,14 @@ Last updated November 13, 2026 (Asia/Dhaka).
 - Integrated the unmodified interim lockup and a mark-only favicon. See [asset provenance](docs/BRAND_ASSET_PROVENANCE.md) for source and crop details.
 - Audited the public demo at desktop and mobile sizes. See [demo audit](docs/DEMO_AUDIT.md).
 
+### Portfolio redesign and deployment
+
+- Replaced the infrastructure landing screen with a bilingual product page. Redesigned sign-in, role navigation, dashboard summaries, and responsive forms and panels.
+- Seeded four named lots, four offers, two orders, freight quotes and booking, a reviewed inspection with private photos, settlement evidence, and a linked assistance request. The seeder uses stable request IDs and the existing business services.
+- Removed the account badge and call simulator link from the normal workspace navigation. Local call testing remains available by its direct development route. Market pages retain source and provenance for illustrative prices.
+- Created [tahmidkhanshuvo/PeyajFlow](https://github.com/tahmidkhanshuvo/PeyajFlow) as a public repository. The free hosting plan uses Render, a dedicated Supabase project, and Vercel Hobby. The requested domain is `peyajflow.tahmidkhan.com.bd`.
+- Verified 24 API tests, four web unit tests, three end-to-end workflows, the production build, and both hosting configuration schemas. The landing page and all four populated roles passed axe and horizontal overflow checks from 360 to 1440 px. Verified the seeded private inspection image in the browser and confirmed that running the seed twice preserved the original record counts.
+
 ### Pilot milestone F01–F07
 
 | Feature | Delivered | Evidence |

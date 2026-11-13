@@ -1,146 +1,126 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BrandLogo } from "../../components/brand-logo";
-import { RefreshStatus } from "../../components/refresh-status";
-import { copy, isLocale } from "../../lib/copy";
-import { readHealth } from "../../lib/health";
+import { WorkspaceIcon } from "../../components/workspace/icon";
+import { isLocale } from "../../lib/copy";
+import { local } from "../../lib/workspace-copy";
 
-export const dynamic = "force-dynamic";
-
-function Connection({
-  title,
-  description,
-  status,
-  positive,
-}: {
-  title: string;
-  description: string;
-  status: string;
-  positive: boolean;
-}) {
-  return (
-    <div className="connection">
-      <dt>{title}</dt>
-      <dd className="connection-body">
-        <p className={positive ? "state state-ready" : "state state-pending"}>
-          <span aria-hidden="true" />
-          {status}
-        </p>
-        <p className="description">{description}</p>
-      </dd>
-    </div>
-  );
-}
-
-export default async function Workspace({ params }: PageProps<"/[locale]">) {
+export default async function Home({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const words = copy[locale];
+  const t = (bn: string, en: string) => local(locale, bn, en);
   const alternate = locale === "bn" ? "en" : "bn";
-  const health = await readHealth(
-    process.env.API_INTERNAL_BASE_URL ?? "http://127.0.0.1:8000",
-  );
-  const checkedAt = new Date();
-  const localTime = new Intl.DateTimeFormat(
-    locale === "bn" ? "bn-BD" : "en-GB",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-      hourCycle: "h23",
-      timeZone: "Asia/Dhaka",
-    },
-  ).format(checkedAt);
-  const overall =
-    words.overall[health.database === "ready" ? "ready" : "pending"];
-
+  const workspace = `/${locale}/workspace`;
+  const capabilities = [
+    [
+      "stock",
+      t("মজুত ও গুণমান", "Stock and condition"),
+      t(
+        "মজুতের ওজন, সংরক্ষণ ও পরিদর্শনের ইতিহাস রাখুন।",
+        "Record weights, storage conditions, and inspection evidence by lot.",
+      ),
+    ],
+    [
+      "prices",
+      t("বাজারদর ও সিদ্ধান্ত", "Market and decisions"),
+      t(
+        "উৎসসহ বাজারদর দেখুন এবং এখন বিক্রি করা বা অপেক্ষা করার হিসাব মিলিয়ে নিন।",
+        "Compare sourced market prices and the likely cost of holding or selling.",
+      ),
+    ],
+    [
+      "orders",
+      t("অফার ও সরবরাহ", "Offers and delivery"),
+      t(
+        "অফার থেকে পরিবহন, পণ্য গ্রহণ এবং অর্থপ্রদানের রেকর্ড পর্যন্ত দেখুন।",
+        "Follow an offer through transport, receipt, and payment review.",
+      ),
+    ],
+  ];
   return (
-    <div className="workspace">
+    <div className="public-site">
       <a className="skip-link" href="#main">
-        {words.skip}
+        {t("মূল অংশে যান", "Skip to main content")}
       </a>
-      <header className="rail">
+      <header className="public-header">
         <Link className="brand-link" href={`/${locale}`}>
           <BrandLogo />
         </Link>
-        <nav aria-label={words.navigation}>
-          <Link
-            className="current-page"
-            href={`/${locale}`}
-            aria-current="page"
-          >
-            {words.overview}
+        <nav aria-label={t("প্রধান নেভিগেশন", "Main navigation")}>
+          <a className="public-how" href="#how">
+            {t("কীভাবে কাজ করে", "How it works")}
+          </a>
+          <Link className="language" href={`/${alternate}`} lang={alternate}>
+            {t("English", "বাংলা")}
+          </Link>
+          <Link className="public-button" href={workspace}>
+            {t("সাইন ইন", "Sign in")}
           </Link>
         </nav>
-        <Link
-          className="language mobile-language"
-          href={`/${alternate}`}
-          lang={alternate}
-          hrefLang={alternate}
-        >
-          {words.languageLabel}
-        </Link>
       </header>
-      <div className="workspace-body">
-        <div className="toolbar">
-          <Link
-            className="language"
-            href={`/${alternate}`}
-            lang={alternate}
-            hrefLang={alternate}
-          >
-            {words.languageLabel}
-          </Link>
-        </div>
-        <main id="main" className="content">
-          <div className="page-heading">
-            <div>
-              <h1>{words.heading}</h1>
-              <p className="description">{words.introduction}</p>
+      <main id="main" tabIndex={-1}>
+        <section className="public-hero">
+          <div className="public-hero-copy">
+            <p className="public-kicker">
+              {t("পাবনা থেকে ঢাকা", "Pabna to Dhaka")}
+            </p>
+            <h1>
+              {t(
+                "মজুত থেকে বাজারে পেঁয়াজের যাত্রা",
+                "From onion stock to a confirmed sale.",
+              )}
+            </h1>
+            <p>
+              {t(
+                "মজুত, পরিদর্শন, বাজারদর ও ক্রয়-বিক্রয় এক জায়গায়। কৃষক, ক্রেতা ও মাঠ সহায়তাকারীদের জন্য।",
+                "One workspace for growers, buyers, and field agents to manage stock, compare prices, and follow every order.",
+              )}
+            </p>
+            <div className="public-actions">
+              <Link className="public-button" href={workspace}>
+                {t("ওয়ার্কস্পেস খুলুন", "Open workspace")}
+                <WorkspaceIcon name="arrow" />
+              </Link>
+              <a className="public-how" href="#how">
+                {t("কীভাবে কাজ করে", "How it works")}
+              </a>
             </div>
-            <RefreshStatus
-              label={words.refresh}
-              pendingLabel={words.refreshing}
-            />
           </div>
-          <Link className="work-link" href={`/${locale}/workspace`}>
-            {locale === "bn" ? "ওয়ার্কস্পেস খুলুন" : "Open workspace"}
-          </Link>
-          <div aria-live="polite">
-            <section className="summary" aria-labelledby="summary-heading">
-              <div>
-                <h2 id="summary-heading">{overall[0]}</h2>
-                <p>{overall[1]}</p>
-              </div>
-              <p className="checked">
-                {words.checked}
-                <time dateTime={checkedAt.toISOString()}>
-                  {localTime} · {words.timeZone}
-                </time>
-              </p>
-            </section>
-            <section
-              className="connections"
-              aria-labelledby="connection-heading"
-            >
-              <h2 id="connection-heading">{words.connection}</h2>
-              <dl>
-                <Connection
-                  title={words.api}
-                  status={words.statuses[health.api][0]}
-                  description={words.statuses[health.api][1]}
-                  positive={health.api === "online"}
-                />
-                <Connection
-                  title={words.database}
-                  status={words.statuses[health.database][0]}
-                  description={words.statuses[health.database][1]}
-                  positive={health.database === "ready"}
-                />
-              </dl>
-            </section>
+          <div
+            className="public-hero-photo"
+            role="img"
+            aria-label={t(
+              "বাঁশের ঝুড়িতে লাল পেঁয়াজ",
+              "Red onions in a woven basket",
+            )}
+          />
+        </section>
+        <section className="public-capabilities" id="how">
+          <h2>
+            {t(
+              "মজুত থেকে সরবরাহ পর্যন্ত",
+              "Track the trade from stock to delivery",
+            )}
+          </h2>
+          <div>
+            {capabilities.map(([icon, title, description]) => (
+              <article key={icon}>
+                <span className="dash-icon">
+                  <WorkspaceIcon name={icon} />
+                </span>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </article>
+            ))}
           </div>
-        </main>
-      </div>
+        </section>
+      </main>
+      <footer className="public-footer">
+        <BrandLogo />
+        <Link className="work-link" href={workspace}>
+          {t("ওয়ার্কস্পেস", "Workspace")}
+        </Link>
+      </footer>
     </div>
   );
 }

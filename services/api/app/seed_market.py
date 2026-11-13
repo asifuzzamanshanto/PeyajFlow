@@ -5,7 +5,14 @@ from io import StringIO
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth import Profile, Role, demo_enabled, demo_id, seed_demo
+from app.auth import (
+    Profile,
+    Role,
+    demo_enabled,
+    demo_id,
+    seed_demo,
+    showcase_access_key,
+)
 from app.database import database_engine
 from app.lots import today
 from app.market_data import (
@@ -19,7 +26,7 @@ from app.market_data import (
 
 
 def main() -> None:
-    if not demo_enabled():
+    if not (demo_enabled() or showcase_access_key()):
         raise SystemExit("Synthetic data requires explicit demo mode.")
     engine = database_engine()
     if engine is None:
@@ -30,8 +37,8 @@ def main() -> None:
         user_id=demo_id("user", "admin"),
         membership_id=demo_id("membership", "admin"),
         organization_id=demo_id("organization", "admin"),
-        organization="Demo operator",
-        name="Demo operator",
+        organization="Operations desk",
+        name="Operations desk",
         district="Dhaka",
         language="bn",
         role=Role.ADMIN,

@@ -7,6 +7,7 @@ import "@fontsource/hind-siliguri/bengali-600.css";
 import "@fontsource/hind-siliguri/bengali-700.css";
 import { isLocale } from "../../lib/copy";
 import "../globals.css";
+import "../product.css";
 
 export const metadata: Metadata = {
   title: "PeyajFlow",

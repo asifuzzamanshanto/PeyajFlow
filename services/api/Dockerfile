@@ -11,6 +11,7 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY alembic.ini ./
 COPY migrations migrations
 COPY app app
+COPY --chmod=755 start-hosted.sh /app/start-hosted.sh
 
 RUN useradd --system --uid 10001 peyajflow \
     && install -d -o peyajflow -g peyajflow /var/lib/peyajflow/photos

@@ -2,11 +2,12 @@ import os
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from hashlib import sha256
+from hmac import compare_digest
 from secrets import token_urlsafe
 from typing import Annotated, Literal
 from uuid import UUID, uuid4, uuid5
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, StringConstraints
 from sqlalchemy import (
@@ -127,6 +128,7 @@ class ProfileEdit(Input):
 
 class DemoLogin(Input):
     identity: Annotated[str, StringConstraints(max_length=32)]
+    access_key: Annotated[str, StringConstraints(max_length=256)] = ""
 
 
 class DemoIdentity(BaseModel):
@@ -153,13 +155,18 @@ def demo_enabled() -> bool:
     )
 
 
+def showcase_access_key() -> str | None:
+    key = os.getenv("SHOWCASE_ACCESS_KEY", "")
+    return key if os.getenv("APP_ENV") == "production" and len(key) >= 20 else None
+
+
 DEMO_MEMBERS = {
     "farmer": ("Rahim · Pabna", "Pabna", Role.FARMER, False),
     "farmer-two": ("Salma · Pabna", "Pabna", Role.FARMER, False),
     "buyer": ("Nadia · Dhaka", "Dhaka", Role.BUYER, True),
     "buyer-two": ("Hasan · Dhaka", "Dhaka", Role.BUYER, False),
     "agent": ("Jalil · Pabna", "Pabna", Role.AGENT, True),
-    "admin": ("Demo operator", "Dhaka", Role.ADMIN, True),
+    "admin": ("Operations desk", "Dhaka", Role.ADMIN, True),
 }
 DEMO_NAMESPACE = UUID("15e4a3fb-cb8f-4da0-9b72-686ed8bf45ce")
 
@@ -246,7 +253,9 @@ def actor_for(
         .mappings()
         .one_or_none()
     )
-    if row is None or (row["is_demo"] and not demo_enabled()):
+    if row is None or (
+        row["is_demo"] and not (demo_enabled() or showcase_access_key())
+    ):
         raise HTTPException(401, "session_expired")
     if os.getenv("APP_ENV") == "production":
         enforce(db, "member", str(row["membership_id"]), limit=120, seconds=60)
@@ -288,7 +297,7 @@ def audit(
 
 @router.get("/auth/demo", response_model=list[DemoIdentity])
 def demo_identities() -> list[DemoIdentity]:
-    if not demo_enabled():
+    if not (demo_enabled() or showcase_access_key()):
         raise HTTPException(404, "demo_disabled")
     return [
         DemoIdentity(identity=identity, name=name, role=role)
@@ -297,9 +306,22 @@ def demo_identities() -> list[DemoIdentity]:
 
 
 @router.post("/auth/demo", response_model=SessionToken, status_code=201)
-def demo_login(body: DemoLogin, db: DB, response: Response) -> SessionToken:
-    if not demo_enabled():
+def demo_login(
+    body: DemoLogin, db: DB, request: Request, response: Response
+) -> SessionToken:
+    access_key = showcase_access_key()
+    if not (demo_enabled() or access_key):
         raise HTTPException(404, "demo_disabled")
+    if access_key:
+        enforce(
+            db,
+            "showcase-login",
+            request.client.host if request.client else "unknown",
+            limit=30,
+            seconds=60,
+        )
+        if not compare_digest(body.access_key.encode(), access_key.encode()):
+            raise HTTPException(401, "showcase_access_invalid")
     if body.identity not in DEMO_MEMBERS:
         raise HTTPException(422, "unknown_demo_identity")
     member_id = demo_id("membership", body.identity)

@@ -42,6 +42,7 @@ export async function signIn(
       "/v1/auth/demo",
       json({
         identity: String(form.get("identity") ?? ""),
+        access_key: String(form.get("access_key") ?? ""),
       }),
     );
     await saveSession(session);
