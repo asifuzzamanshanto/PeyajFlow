@@ -3,6 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 
@@ -11,9 +12,11 @@ from app.database import API_ROOT
 
 @lru_cache
 def s3():
+    endpoint = os.getenv("S3_ENDPOINT") or None
     return boto3.client(
         "s3",
-        endpoint_url=os.getenv("S3_ENDPOINT") or None,
+        endpoint_url=endpoint,
+        config=Config(s3={"addressing_style": "path"}) if endpoint else None,
         region_name=os.getenv("S3_REGION") or "us-east-1",
         aws_access_key_id=os.getenv("S3_ACCESS_KEY_ID") or None,
         aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY") or None,
