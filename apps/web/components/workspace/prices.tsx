@@ -30,6 +30,7 @@ export const methods: Record<string, [string, string]> = {
     "ঐতিহাসিক পরিবর্তনের কোয়ান্টাইল",
     "Historical-change quantiles",
   ],
+  lagged_price_neighbors: ["দরের অনুরূপ প্রবণতার মডেল", "Price pattern model"],
 };
 
 export function priceType(locale: Locale, type: string) {
@@ -133,6 +134,34 @@ function Observations({
   );
 }
 
+function ForecastRange({
+  locale,
+  result,
+}: {
+  locale: Locale;
+  result: Pick<Forecast, "low_bdt_kg" | "middle_bdt_kg" | "high_bdt_kg">;
+}) {
+  const bounds = [
+    [local(locale, "নিম্ন", "Low"), result.low_bdt_kg],
+    [local(locale, "মধ্য", "Middle"), result.middle_bdt_kg],
+    [local(locale, "উচ্চ", "High"), result.high_bdt_kg],
+  ];
+  return (
+    <dl className="work-metrics">
+      {bounds.map(([label, amount]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>
+            {amount === null
+              ? "—"
+              : `${taka(locale, amount)} / ${local(locale, "কেজি", "kg")}`}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function ForecastPanel({
   locale,
   result,
@@ -157,20 +186,7 @@ function ForecastPanel({
           <p>
             {name} · {timeLabel(locale, result.target_on)}
           </p>
-          <dl className="work-metrics">
-            {[
-              [local(locale, "নিম্ন", "Low"), result.low_bdt_kg],
-              [local(locale, "মধ্য", "Middle"), result.middle_bdt_kg],
-              [local(locale, "উচ্চ", "High"), result.high_bdt_kg],
-            ].map(([label, amount]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>
-                  {taka(locale, amount ?? "0")} / {local(locale, "কেজি", "kg")}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <ForecastRange locale={locale} result={result} />
           <p>
             {local(
               locale,
@@ -193,6 +209,19 @@ function ForecastPanel({
                 "There is insufficient history to estimate a range.",
               )}
         </p>
+      )}
+      {result.model_preview && (
+        <section>
+          <h3>{local(locale, "দর মডেলের নমুনা", "Price model preview")}</h3>
+          <p>
+            {local(
+              locale,
+              "নমুনা ইতিহাসে অনুরূপ দরের প্রবণতা থেকে তৈরি পরীক্ষামূলক পরিসর। বাস্তব বাজারে মডেলটি এখনও যাচাই করা হয়নি।",
+              "An experimental range learned from similar price patterns in the sample history. Real-market accuracy still needs validation.",
+            )}
+          </p>
+          <ForecastRange locale={locale} result={result.model_preview} />
+        </section>
       )}
       <p>
         {local(locale, "ব্যবহৃত পর্যবেক্ষণের দিন", "Observation dates used")} ·{" "}

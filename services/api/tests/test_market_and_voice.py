@@ -1,8 +1,10 @@
 import csv
 import os
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from io import StringIO
+from math import sin, tau
+from random import Random
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -17,6 +19,7 @@ from app.forecast import ForecastView, Report, available, forecast_series
 from app.logistics import quotes
 from app.lots import today
 from app.market_data import CSV_FIELDS
+from app.price_model import MODEL_METHOD
 from app.trade import now
 from app.voice import actions
 
@@ -146,6 +149,11 @@ def test_walk_forward_forecast_and_publication_date():
     assert baseline.status == "baseline" and baseline.synthetic
     assert baseline.low_bdt_kg <= baseline.middle_bdt_kg <= baseline.high_bdt_kg
     assert any(metric.observations == 36 for metric in baseline.backtest)
+    assert any(metric.method == MODEL_METHOD for metric in baseline.backtest)
+    model = baseline.model_preview
+    assert model is not None and model.method == MODEL_METHOD
+    assert model.low_bdt_kg <= model.middle_bdt_kg <= model.high_bdt_kg
+    assert forecast_series(reports, origin, 14, False).model_preview is None
     assert (
         forecast_series(reports, origin + timedelta(days=8), 7, False).status == "stale"
     )
@@ -163,6 +171,24 @@ def test_quantile_gate_promotes_only_eligible_real_series():
         reports.append(Report(day, day, price))
     assert forecast_series(reports, origin, 7, False).status == "quantile"
     assert forecast_series(reports, origin, 7, True).status == "baseline"
+
+
+def test_price_pattern_model_requires_better_replay_to_replace_baselines():
+    origin = date(2026, 11, 17)
+
+    def replay(cycle):
+        rng = Random(17)
+        reports = []
+        for index in range(145):
+            day = origin - timedelta(weeks=144 - index)
+            price = 50 + 14 * sin(tau * index / cycle) + rng.uniform(-0.8, 0.8)
+            reports.append(Report(day, day, Decimal(str(price))))
+        return forecast_series(reports, origin, 7, False)
+
+    assert replay(8).method == MODEL_METHOD
+    yearly = replay(52)
+    assert yearly.method == "seasonal_naive"
+    assert yearly.model_preview is None
 
 
 @requires_database

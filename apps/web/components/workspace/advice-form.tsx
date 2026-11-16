@@ -64,6 +64,7 @@ const labels: Record<string, [string, string]> = {
     "ঐতিহাসিক কোয়ান্টাইল",
     "Historical-change quantiles",
   ],
+  lagged_price_neighbors: ["দরের অনুরূপ প্রবণতার মডেল", "Price pattern model"],
 };
 
 export function AdviceForm({

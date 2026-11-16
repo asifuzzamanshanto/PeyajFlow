@@ -35,6 +35,12 @@ export type Forecast = {
   low_bdt_kg: string | null;
   middle_bdt_kg: string | null;
   high_bdt_kg: string | null;
+  model_preview?: {
+    method: string;
+    low_bdt_kg: string;
+    middle_bdt_kg: string;
+    high_bdt_kg: string;
+  } | null;
   backtest: {
     method: string;
     observations: number;

@@ -161,8 +161,12 @@ test(
       assert.ok(series?.synthetic);
       await buyer.goto(`${base}/prices?series=${series.series}&horizon=14`);
       await buyer.getByRole("heading", { name: "Price outlook" }).waitFor();
+      await buyer
+        .getByRole("heading", { name: "Price model preview" })
+        .waitFor();
       await open(buyer, "Historical backtest");
       await buyer.getByText("WAPE", { exact: true }).waitFor();
+      await buyer.getByRole("cell", { name: "Price pattern model" }).waitFor();
       await evidence(buyer, "pilot-price-outlook.png");
 
       await farmer.goto(`${base}/stock/${lot.id}/advice`);

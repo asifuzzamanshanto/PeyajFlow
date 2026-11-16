@@ -3,6 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
+from functools import cache
 from statistics import median
 from typing import Annotated, Literal, cast
 
@@ -15,6 +16,7 @@ from app.auth import Actor, Profile
 from app.database import DB
 from app.lots import today
 from app.market_data import FRESH_DAYS, approved, prices
+from app.price_model import MODEL_METHOD, MarketPattern, market_pattern, predict_price
 
 router = APIRouter(prefix="/v1/market", tags=["Forecasts"])
 Horizon = Literal[7, 14, 28]
@@ -47,6 +49,13 @@ class Metrics(BaseModel):
     pinball_bdt_kg: Decimal
 
 
+class ModelPreview(BaseModel):
+    method: Literal["lagged_price_neighbors"] = MODEL_METHOD
+    low_bdt_kg: Decimal
+    middle_bdt_kg: Decimal
+    high_bdt_kg: Decimal
+
+
 class ForecastView(BaseModel):
     status: Literal["baseline", "quantile", "insufficient_data", "stale"]
     method: str | None = None
@@ -60,6 +69,7 @@ class ForecastView(BaseModel):
     middle_bdt_kg: Decimal | None = None
     high_bdt_kg: Decimal | None = None
     backtest: list[Metrics]
+    model_preview: ModelPreview | None = None
 
 
 def available(reports: list[Report], origin: date) -> dict[date, Decimal]:
@@ -104,6 +114,7 @@ def estimate(
     origin: date,
     horizon: int,
     calibration: dict[date, dict[str, Decimal]],
+    model_point: Decimal | None,
 ) -> dict[str, Band]:
     if len(history) < 10:
         return {}
@@ -116,6 +127,8 @@ def estimate(
         for method, prediction in calibration[day].items():
             residuals[method].append(actual - prediction)
     point_estimates = points(history, origin, horizon)
+    if model_point is not None:
+        point_estimates[MODEL_METHOD] = max(MIN_POINT, model_point)
     result = {}
     for method, point in point_estimates.items():
         errors = residuals[method][-60:]
@@ -160,6 +173,16 @@ def metrics(method: str, folds: list[tuple[Band, Decimal]]) -> Metrics:
     )
 
 
+def passes_gate(candidate: Metrics, reference: list[Metrics]) -> bool:
+    return (
+        candidate.observations >= 24
+        and bool(reference)
+        and candidate.mae_bdt_kg
+        < min(item.mae_bdt_kg for item in reference) * Decimal(".90")
+        and 70 <= candidate.interval_coverage_pct <= 95
+    )
+
+
 def forecast_series(
     reports: list[Report], origin: date, horizon: Horizon, synthetic: bool
 ) -> ForecastView:
@@ -190,29 +213,56 @@ def forecast_series(
     calibration = {
         day: points(snapshot, day, horizon) for day, snapshot in snapshots.items()
     }
-    bands = estimate(history, origin, horizon, calibration)
+
+    @cache
+    def pattern_at(day: date) -> MarketPattern | None:
+        snapshot = snapshots.get(day)
+        if snapshot is None:
+            snapshot = available(reports, day)
+        return market_pattern(snapshot, day, horizon, FRESH_DAYS)
+
+    for day, snapshot in snapshots.items():
+        pattern = pattern_at(day)
+        if pattern is None:
+            continue
+        model_point = predict_price(pattern, pattern_at, snapshot, horizon)
+        if model_point is not None:
+            calibration[day][MODEL_METHOD] = max(MIN_POINT, model_point)
+    current_pattern = market_pattern(history, origin, horizon, FRESH_DAYS)
+    current_model_point = (
+        predict_price(current_pattern, pattern_at, history, horizon)
+        if current_pattern is not None
+        else None
+    )
+    bands = estimate(history, origin, horizon, calibration, current_model_point)
     if not bands:
         return ForecastView(status="insufficient_data", backtest=[], **context)
 
     folds: dict[str, list[tuple[Band, Decimal]]] = defaultdict(list)
-    paired: dict[str, list[tuple[Band, Decimal]]] = defaultdict(list)
+    paired: dict[str, dict[str, list[tuple[Band, Decimal]]]] = {
+        CANDIDATE: defaultdict(list),
+        MODEL_METHOD: defaultdict(list),
+    }
     evaluated = 0
     for day, snapshot in snapshots.items():
         actual = history[day + delta]
-        alternatives = estimate(snapshot, day, horizon, calibration)
+        alternatives = estimate(
+            snapshot, day, horizon, calibration, calibration[day].get(MODEL_METHOD)
+        )
         if "last_value" not in alternatives:
             continue
         for method, band in alternatives.items():
             folds[method].append((band, actual))
-            if CANDIDATE in alternatives:
-                paired[method].append((band, actual))
+            for candidate, comparable in paired.items():
+                if candidate in alternatives:
+                    comparable[method].append((band, actual))
         evaluated += 1
         if evaluated == 36:
             break
 
     results = [
         metrics(method, folds[method])
-        for method in (*BASELINES, CANDIDATE)
+        for method in (*BASELINES, CANDIDATE, MODEL_METHOD)
         if folds[method]
     ]
     # Compare only baseline forecasts with the same evaluation coverage.
@@ -226,27 +276,38 @@ def forecast_series(
     if not baseline_choices or evaluated < 6:
         return ForecastView(status="insufficient_data", backtest=results, **context)
     selected = min(baseline_choices, key=lambda item: item.mae_bdt_kg).method
-    if not synthetic and CANDIDATE in bands and len(paired[CANDIDATE]) >= 24:
-        candidate = metrics(CANDIDATE, paired[CANDIDATE])
-        comparable = [
-            metrics(method, paired[method]).mae_bdt_kg
-            for method in BASELINES
-            if len(paired[method]) == len(paired[CANDIDATE])
-        ]
-        if (
-            comparable
-            and candidate.mae_bdt_kg < min(comparable) * Decimal(".90")
-            and 70 <= candidate.interval_coverage_pct <= 95
-        ):
-            selected = CANDIDATE
+    if not synthetic:
+        for method, comparable in paired.items():
+            candidate_folds = comparable[method]
+            if method not in bands or not candidate_folds:
+                continue
+            references = [
+                metrics(reference, comparable[reference])
+                for reference in dict.fromkeys((*BASELINES, selected))
+                if len(comparable[reference]) == len(candidate_folds)
+            ]
+            if len(comparable[selected]) == len(candidate_folds) and passes_gate(
+                metrics(method, candidate_folds), references
+            ):
+                selected = method
     band = bands[selected]
+    preview = bands.get(MODEL_METHOD) if synthetic else None
     return ForecastView(
-        status="quantile" if selected == CANDIDATE else "baseline",
+        status="baseline" if selected in BASELINES else "quantile",
         method=selected,
         low_bdt_kg=band.low.quantize(MIN_POINT),
         middle_bdt_kg=band.middle.quantize(MIN_POINT),
         high_bdt_kg=band.high.quantize(MIN_POINT),
         backtest=results,
+        model_preview=(
+            ModelPreview(
+                low_bdt_kg=preview.low.quantize(MIN_POINT),
+                middle_bdt_kg=preview.middle.quantize(MIN_POINT),
+                high_bdt_kg=preview.high.quantize(MIN_POINT),
+            )
+            if preview is not None
+            else None
+        ),
         **context,
     )
 

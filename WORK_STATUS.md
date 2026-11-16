@@ -2,6 +2,23 @@
 
 Last updated November 17, 2026 (Asia/Dhaka).
 
+## Current priority: 48-hour AI pilot
+
+Target a complete, working pilot on the existing deployment. Initial model accuracy can be modest. Show uncertainty and report when evidence is insufficient.
+
+| Workflow | Pilot acceptance criteria |
+| --- | --- |
+| Price forecasting | Implemented and verified locally for 7, 14, and 28 days. Hosted rollout and real-market validation are pending. |
+| Photo inspection | Run a vision model on consented inspection photos to flag visible rot, sprouting, or damage. Let reviewers confirm or correct the findings and keep photos private. |
+| Storage loss and hold or sell | Feed an experimental sellable-stock estimate and price forecast into the existing calculator. Use labeled scenarios when measured loss data is insufficient for a learned estimate. |
+| Bangla voice | Accept browser microphone input, interpret supported Bangla requests, and speak replies. Read back and explicitly confirm any request that changes stock or commits an order. |
+| Calls and SMS | Use live delivery if a suitable free provider is available. Otherwise, make the call and SMS flows usable in demo mode, with delivery status clearly marked as simulated. Demo delivery satisfies pilot acceptance. |
+| Release | Exercise each workflow from input to result on the hosted site and record the outcome and limitations here. |
+
+The price pattern model uses nearest-neighbor regression on recent price changes and seasonal timing. Forecast ranges use errors from historical replays. A labeled synthetic preview exercises the model on seeded prices. On approved real series, the model must beat the baseline on comparable replay dates and meet the coverage threshold before its forecast becomes the primary outlook.
+
+The API suite and the new model selection regression passed. The production web build and the browser flow passed through CSV import, approval, forecast rendering, and accessibility checks. The seeded sample returned a model preview at each supported horizon. The remaining AI workflows, field validation, and post-pilot integrations are still pending.
+
 ## Work completed
 
 - Reviewed the master handoff, the supplied 311 × 59 transparent logo, and the existing workspace. The workspace started with those two files and no Git history or remote.
