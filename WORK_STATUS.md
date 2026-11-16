@@ -1,6 +1,6 @@
 # PeyajFlow work status
 
-Last updated November 13, 2026 (Asia/Dhaka).
+Last updated November 17, 2026 (Asia/Dhaka).
 
 ## Work completed
 
@@ -67,7 +67,7 @@ Last updated November 13, 2026 (Asia/Dhaka).
 | Local Git | Foundation committed as `bd2271e902f637efc973b03db9b1b7300540074f` on `chore/repo-foundation` |
 | Pilot Git | F01–F07 committed as `a92fea9425e339c62a197a54732878fb271ce77f` on `feat/pilot-f01-f07` |
 | Market and call Git | F08–F12 committed as `4a205abfc38b0a05051abadc5820bc489f894486` on `feat/market-voice-f08-f12` |
-| Release Git | F13–F17 recorded on `feat/release-f13-f17`. GitHub delivery awaits an approved remote |
+| Release Git | The redesign and F00–F17 history are published on the public GitHub `main` branch |
 | Web dependencies, format, lint, typecheck, unit tests, and production build | Frozen install, format, lint, typecheck, 4 unit tests, and production build passed |
 | API dependencies, lint, format, and health tests | Locked sync, Ruff lint and formatting, and 3 API tests passed |
 | PostgreSQL migration and readiness | One Alembic head. Upgrade, baseline rollback, and re-upgrade passed on disposable PostgreSQL 18.6. Alembic reported no metadata drift. The running API returned HTTP 503 before migration and HTTP 200 afterward |
@@ -83,15 +83,17 @@ Last updated November 13, 2026 (Asia/Dhaka).
 | Full project acceptance | 23 API tests, four web unit tests, three Playwright workflows, and the production build passed against the final source. Tested on a fresh PostgreSQL 16 Compose stack. Rerunning the demo seed preserved exactly 108 synthetic fixture observations. Axe reported zero violations on checked screens. [Mobile receipt with settlement](docs/design-reviews/completion-settlement-360.png) |
 | Full project recovery | PostgreSQL 16 restore preserved `0015_settlement` and counts of lots, ledger events, orders, alerts, and verified reports. Rollback to `0014_release`, re-upgrade, and the Alembic metadata check passed on the restored copy |
 | Full project production-mode smoke | A provisioned account could sign in and out with a secure, HTTP-only cookie. Demo login was disabled. Private Garage S3 upload, checksum, authorized retrieval, metadata removal, and denied anonymous and cross-account reads passed |
-| GitHub PR and CI run | Pending an authorized remote |
-| Render and Vercel deployment | Configuration prepared and schema-checked. Preview and production provisioning, HTTPS smoke and private bucket verification pending authorized services |
+| GitHub CI | The redesign passed all checks on public `main` at `ec10343`. [GitHub Actions](https://github.com/tahmidkhanshuvo/PeyajFlow/actions/runs/43375155544) |
+| Free hosting | Dedicated Supabase project and private `inspections` bucket provisioned. Render Blueprint and Vercel configuration prepared. Hosted sign-in, photo acceptance, and recovery verification pending a deployed API and frontend |
+| Hosting rehearsal | The Render startup command migrated and seeded a fresh PostgreSQL 16 database with private S3-compatible Garage storage. The expanded release smoke passed with a required workspace code, a seeded JPEG, anonymous and cross-farmer read denial, and revocation of both sessions |
+| Custom domain | Cloudflare serves DNS for `tahmidkhan.com.bd`. On November 16 `peyajflow.tahmidkhan.com.bd` had no address or CNAME, and GitHub had no deployment record |
 | Pilot and field validation | Pending pilot participants and real market and storage evidence |
 
 ## Implementation queue
 
 | ID | Work | State |
 | --- | --- | --- |
-| F00 | Monorepo, local database and API, CI, responsive workspace shell | Implemented and verified with the native stack and Docker Compose. GitHub CI run pending |
+| F00 | Monorepo, local database and API, CI, responsive workspace shell | Implemented and verified with the native stack, Docker Compose, and GitHub Actions |
 | Brand | Owner-logo integration, responsive usage, contrast, and design evidence | Initial integration in F00. Standalone brand review, wider UI placements, and vector asset pending |
 | F01 | Users, organizations, roles, safe demo sessions and authorization | Implemented in the local pilot |
 | F02 | Farmer lots, quantity units, ownership and immutable stock ledger | Implemented in the local pilot |
@@ -128,8 +130,8 @@ Last updated November 13, 2026 (Asia/Dhaka).
 
 ## Remaining delivery and field work
 
-- Connect the approved Git remote, run the PR checks, and record the reviewed commit and CI evidence. The local repository has no remote and the GitHub connector found no installed repository named PeyajFlow.
-- Provision the approved Render and Vercel services and private photo bucket. Verify hosted readiness, production sign-in, authenticated photo retrieval, backup retention and isolated recovery.
+- Complete the Render API configuration with the dedicated Supabase session-pooler connection, S3 credentials, and portfolio access code. Connect the Vercel project to the verified API endpoint and confirm the hosted sign-in and photo checks.
+- Add the specific CNAME supplied by Vercel in the Cloudflare zone, verify DNS and HTTPS, and run the release smoke on the custom domain. Verify hosted backup and isolated recovery separately.
 - Verify Twilio carrier calls, SMS delivery and STOP against approved numbers. Confirm live voice enrollment and Bangla prompts with pilot participants before enabling private actions.
 - Collect real price and storage evidence, test Bangla wording and mobile workflows in the field, and obtain the owner’s vector artwork. Live forecasting and visual-risk calibration require representative independent evidence.
 - The post-pilot roadmap includes licensed payment and carrier integrations, independent transporter tracking, sensors, and offline drafts. The demonstrated pilot uses manual settlement, recorded transport quotes, a labeled call simulator, and offline status feedback.

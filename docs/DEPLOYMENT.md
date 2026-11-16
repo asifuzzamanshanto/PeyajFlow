@@ -27,6 +27,8 @@ SMOKE_WEB_ORIGIN=https://app.example.invalid \
 SMOKE_EXPECT_PRODUCTION=1 pnpm smoke
 ```
 
+For the portfolio deployment, provide `SMOKE_SHOWCASE_ACCESS_KEY` from your secret store and omit `SMOKE_USERNAME` and `SMOKE_PASSWORD`. The check expects Vercel to prompt for the code and rejects anonymous sign-in. It retrieves the seeded JPEG as the owner, checks that anonymous requests and the other farmer cannot read it, and revokes both sessions. Set `SMOKE_READY_WAIT_SECONDS=120` to allow a Render cold start.
+
 ## Verify the carrier and SMS services
 
 Set `PUBLIC_API_ORIGIN` to the exact public HTTPS origin Twilio uses in its callback URLs. Store `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` in Render. Send signed form-encoded POSTs to the paths below. PeyajFlow verifies the signature and account and records a fingerprint to handle retries. [Twilio request validation](https://www.twilio.com/docs/usage/security)
@@ -40,7 +42,7 @@ During an incident, set the affected provider flag to `disabled` and redeploy th
 
 ## Back up and restore
 
-Keep scheduled managed PostgreSQL backups and an encrypted copy accessible to the recovery operator. Record backup and restore timestamps, the Alembic head, and the photo backup version. Restore tests need an isolated database and bucket with outbound integrations disabled. Use the provider's PostgreSQL client connection string via `PGDATABASE` and secure credentials, or configure the standard `PG*` variables. The commands below assume a new empty restore database and PostgreSQL client tools compatible with the server. [PostgreSQL `pg_dump`](https://www.postgresql.org/docs/current/app-pgdump.html) · [PostgreSQL `pg_restore`](https://www.postgresql.org/docs/current/app-pgrestore.html)
+Keep an encrypted PostgreSQL export accessible to the recovery operator. Supabase Free requires manual database exports. Back up the private inspection objects separately and record the matching timestamps and Alembic revision. Restore tests need an isolated database and bucket with outbound integrations disabled. Use the provider's PostgreSQL client connection string via `PGDATABASE` and secure credentials, or configure the standard `PG*` variables. The commands below assume a new empty restore database and PostgreSQL client tools compatible with the server. [Supabase backups](https://supabase.com/docs/guides/platform/backups) · [PostgreSQL `pg_dump`](https://www.postgresql.org/docs/current/app-pgdump.html) · [PostgreSQL `pg_restore`](https://www.postgresql.org/docs/current/app-pgrestore.html)
 
 ```sh
 pg_dump -Fc --no-owner -f peyajflow.dump
