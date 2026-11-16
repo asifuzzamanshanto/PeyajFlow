@@ -8,7 +8,7 @@ Target a complete, working pilot on the existing deployment. Initial model accur
 
 | Workflow | Pilot acceptance criteria |
 | --- | --- |
-| Price forecasting | Implemented and verified locally for 7, 14, and 28 days. Hosted rollout and real-market validation are pending. |
+| Price forecasting | Deployed. Verified locally for 7, 14, and 28 days. Production readiness and the model API contract passed. Signed-in production verification and real-market validation are pending. |
 | Photo inspection | Run a vision model on consented inspection photos to flag visible rot, sprouting, or damage. Let reviewers confirm or correct the findings and keep photos private. |
 | Storage loss and hold or sell | Feed an experimental sellable-stock estimate and price forecast into the existing calculator. Use labeled scenarios when measured loss data is insufficient for a learned estimate. |
 | Bangla voice | Accept browser microphone input, interpret supported Bangla requests, and speak replies. Read back and explicitly confirm any request that changes stock or commits an order. |
