@@ -20,6 +20,7 @@ Last updated November 17, 2026 (Asia/Dhaka).
 - Deployed the Next.js frontend to Vercel Hobby and verified that both [the Vercel deployment](https://peyajflow.vercel.app/en) and [the custom domain](https://peyajflow.tahmidkhan.com.bd/en) serve the landing page over HTTPS. The Cloudflare DNS-only CNAME points to the project-specific Vercel record, and Vercel marks the domain valid.
 - Deployed the [Render Free API](https://peyajflow-api.onrender.com/health/ready) with a dedicated Supabase Free PostgreSQL database and the private `inspections` bucket. After resetting the database password, Render ran migrations, seeded the workspace, and returned HTTP 200 from readiness.
 - Passed the hosted smoke on the custom domain. It checked the locale redirect, API readiness, the required workspace access code, seeded inventory, inbox, private JPEG retrieval, anonymous and cross-farmer denial, and session revocation. Browser sign-in displayed the seeded farmer dashboard with a Secure, HttpOnly, SameSite=Lax session cookie.
+- Restored a logical export of the hosted application schema into disposable PostgreSQL 17. Revision `0015_settlement` and counts matched the hosted source for six accounts, four lots, two orders, one payment report, and two inspection-photo records. The disposable container removed the export on exit.
 - Verified 24 API tests, four web unit tests, three end-to-end workflows, the production build, and both hosting configuration schemas. The landing page and all four populated roles passed axe and horizontal overflow checks from 360 to 1440 px. Verified the seeded private inspection image in the browser and confirmed that running the seed twice preserved the original record counts.
 
 ### Pilot milestone F01–F07
@@ -114,7 +115,7 @@ Last updated November 17, 2026 (Asia/Dhaka).
 | F14 | In-app alerts and optional SMS adapter | Implemented and verified locally. Live SMS and carrier STOP verification pending |
 | F15 | Admin operations, provenance, audit and disputes | Implemented and verified locally |
 | F16 | Responsive design, accessibility and localization | Implemented and verified locally with bilingual feedback, responsive workspace screens, and axe checks |
-| F17 | Production hardening, rollback, observability and deployment | Production-mode loopback, local database recovery, and hosted release smoke passed. Vercel, Render, Supabase, and custom-domain HTTPS are live. Hosted backup recovery remains to be verified |
+| F17 | Production hardening, rollback, observability and deployment | Production-mode loopback, hosted PostgreSQL restore, and hosted release smoke passed. Vercel, Render, Supabase, and custom-domain HTTPS are live. Independent recovery of private storage objects remains to be verified |
 
 ## Decisions and risks
 
@@ -133,7 +134,7 @@ Last updated November 17, 2026 (Asia/Dhaka).
 
 ## Remaining delivery and field work
 
-- Verify backup and isolated recovery using the hosted PostgreSQL data and private photo bucket.
+- Rehearse recovery of the private inspection objects in an isolated bucket alongside the matching PostgreSQL export.
 - Verify Twilio carrier calls, SMS delivery and STOP against approved numbers. Confirm live voice enrollment and Bangla prompts with pilot participants before enabling private actions.
 - Collect real price and storage evidence, test Bangla wording and mobile workflows in the field, and obtain the owner’s vector artwork. Live forecasting and visual-risk calibration require representative independent evidence.
 - The post-pilot roadmap includes licensed payment and carrier integrations, independent transporter tracking, sensors, and offline drafts. The demonstrated pilot uses manual settlement, recorded transport quotes, a labeled call simulator, and offline status feedback.
