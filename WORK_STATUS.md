@@ -16,7 +16,10 @@ Last updated November 17, 2026 (Asia/Dhaka).
 - Replaced the infrastructure landing screen with a bilingual product page. Redesigned sign-in, role navigation, dashboard summaries, and responsive forms and panels.
 - Seeded four named lots, four offers, two orders, freight quotes and booking, a reviewed inspection with private photos, settlement evidence, and a linked assistance request. The seeder uses stable request IDs and the existing business services.
 - Removed the account badge and call simulator link from the normal workspace navigation. Local call testing remains available by its direct development route. Market pages retain source and provenance for illustrative prices.
-- Created [tahmidkhanshuvo/PeyajFlow](https://github.com/tahmidkhanshuvo/PeyajFlow) as a public repository. The free hosting plan uses Render, a dedicated Supabase project, and Vercel Hobby. The requested domain is `peyajflow.tahmidkhan.com.bd`.
+- Created [tahmidkhanshuvo/PeyajFlow](https://github.com/tahmidkhanshuvo/PeyajFlow) as a public repository and merged the [hosted release smoke checks](https://github.com/tahmidkhanshuvo/PeyajFlow/pull/1) with API, container, and web checks passing.
+- Deployed the Next.js frontend to Vercel Hobby and verified that both [the Vercel deployment](https://peyajflow.vercel.app/en) and [the custom domain](https://peyajflow.tahmidkhan.com.bd/en) serve the landing page over HTTPS. The Cloudflare DNS-only CNAME points to the project-specific Vercel record, and Vercel marks the domain valid.
+- Deployed the [Render Free API](https://peyajflow-api.onrender.com/health/ready) with a dedicated Supabase Free PostgreSQL database and the private `inspections` bucket. After resetting the database password, Render ran migrations, seeded the workspace, and returned HTTP 200 from readiness.
+- Passed the hosted smoke on the custom domain. It checked the locale redirect, API readiness, the required workspace access code, seeded inventory, inbox, private JPEG retrieval, anonymous and cross-farmer denial, and session revocation. Browser sign-in displayed the seeded farmer dashboard with a Secure, HttpOnly, SameSite=Lax session cookie.
 - Verified 24 API tests, four web unit tests, three end-to-end workflows, the production build, and both hosting configuration schemas. The landing page and all four populated roles passed axe and horizontal overflow checks from 360 to 1440 px. Verified the seeded private inspection image in the browser and confirmed that running the seed twice preserved the original record counts.
 
 ### Pilot milestone F01–F07
@@ -111,7 +114,7 @@ Last updated November 17, 2026 (Asia/Dhaka).
 | F14 | In-app alerts and optional SMS adapter | Implemented and verified locally. Live SMS and carrier STOP verification pending |
 | F15 | Admin operations, provenance, audit and disputes | Implemented and verified locally |
 | F16 | Responsive design, accessibility and localization | Implemented and verified locally with bilingual feedback, responsive workspace screens, and axe checks |
-| F17 | Production hardening, rollback, observability and deployment | Release configuration and [runbook](docs/DEPLOYMENT.md) prepared. Production-mode loopback and database recovery passed. Hosted release awaits approved services and repository access |
+| F17 | Production hardening, rollback, observability and deployment | Production-mode loopback, local database recovery, and hosted release smoke passed. Vercel, Render, Supabase, and custom-domain HTTPS are live. Hosted backup recovery remains to be verified |
 
 ## Decisions and risks
 
@@ -125,13 +128,12 @@ Last updated November 17, 2026 (Asia/Dhaka).
 - Matching uses explicit buyer assumptions and operators record quotes received from transporters. Booking is recorded in PeyajFlow. Carrier-side confirmation and tracking remain external.
 - The simulator uses typed commands and optional browser-provided Bangla playback. Web and simulated confirmations share the same transaction, and the simulator requires a demo session.
 - The carrier adapter exposes a public keypad menu. The live caller identity link, Bangla prompts and speech recognition require carrier and language validation. SMS stores generic delivery state and is disabled until provider and consent setup is complete.
-- The release draft uses Render Singapore and Vercel. Confirm hosting, region, billing, photo storage and backup retention in the approved account before applying the blueprint.
+- The release uses Render Free in Singapore, Supabase Free in Singapore, and Vercel Hobby. Render can sleep after inactivity, which delays the next workspace request. The Supabase S3 key serves the private bucket in the dedicated project.
 - Update this file after each feature with what changed, checks that ran, remaining work, and confirmed PR or deployment evidence when available.
 
 ## Remaining delivery and field work
 
-- Complete the Render API configuration with the dedicated Supabase session-pooler connection, S3 credentials, and portfolio access code. Connect the Vercel project to the verified API endpoint and confirm the hosted sign-in and photo checks.
-- Add the specific CNAME supplied by Vercel in the Cloudflare zone, verify DNS and HTTPS, and run the release smoke on the custom domain. Verify hosted backup and isolated recovery separately.
+- Verify backup and isolated recovery using the hosted PostgreSQL data and private photo bucket.
 - Verify Twilio carrier calls, SMS delivery and STOP against approved numbers. Confirm live voice enrollment and Bangla prompts with pilot participants before enabling private actions.
 - Collect real price and storage evidence, test Bangla wording and mobile workflows in the field, and obtain the owner’s vector artwork. Live forecasting and visual-risk calibration require representative independent evidence.
 - The post-pilot roadmap includes licensed payment and carrier integrations, independent transporter tracking, sensors, and offline drafts. The demonstrated pilot uses manual settlement, recorded transport quotes, a labeled call simulator, and offline status feedback.
