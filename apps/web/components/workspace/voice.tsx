@@ -66,8 +66,8 @@ export async function VoicePage({
         <span className="work-tag">{t("সিমুলেশন", "Simulation")}</span>
         <p>
           {t(
-            "বাংলায় বক্তব্য লিখুন, শর্ত পড়ে শুনুন এবং কিপ্যাডে নিশ্চিত করুন। ফোন সংযোগ লাগে না।",
-            "Type a Bangla utterance, review the read-back, and confirm with the keypad. This runs in your browser.",
+            "বাংলায় বলুন বা লিখুন, শর্ত যাচাই করুন এবং কিপ্যাডে নিশ্চিত করুন।",
+            "Speak or type your request in Bangla, review the read-back and confirm with the keypad.",
           )}
         </p>
         <WorkspaceForm

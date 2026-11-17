@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth import Actor, Input, Profile, Role, require_role
 from app.database import DB
 from app.forecast import Horizon, market_forecast
+from app.loss_model import LossEstimate, lot_loss
 from app.lots import BDT, PositiveKg, get_lot, today
 from app.market_data import FRESH_DAYS, approved, prices
 from app.risk import lot_risk
@@ -30,6 +31,7 @@ class AdviceInput(Input):
     hypothetical_middle: BDT | None = None
     hypothetical_high: BDT | None = None
     loss_pct: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)] = Decimal(0)
+    use_loss_model: bool = False
     transport_now_bdt: Amount = Decimal(0)
     fees_now_bdt: Amount = Decimal(0)
     storage_bdt: Amount = Decimal(0)
@@ -71,6 +73,8 @@ class AdviceView(BaseModel):
     hold_middle_bdt: Decimal | None = None
     hold_high_bdt: Decimal | None = None
     loss_pct: Decimal
+    loss_estimate: LossEstimate | None = None
+    loss_source: Literal["manual", "experimental_model"] = "manual"
     now_cost_bdt: Decimal
     later_cost_bdt: Decimal
     synthetic: bool
@@ -167,14 +171,25 @@ def evaluate(
         + body.transport_later_bdt
         + body.fees_later_bdt
     )
-    retained = quantity * (1 - body.loss_pct / 100)
+    estimate = lot_loss(db, lot_id, lot["stored_on"], today(), body.horizon_days)
+    model_scenario = body.use_loss_model and estimate is not None
+    loss_pct = estimate.middle_pct if model_scenario else body.loss_pct
+    loss_scenarios = (
+        (estimate.high_pct, estimate.middle_pct, estimate.low_pct)
+        if model_scenario
+        else (loss_pct,) * 3
+    )
+    retained = quantity * (1 - loss_pct / 100)
     immediate = (
         bdt(quantity * now_price - now_cost)
         if now_price is not None and quantity
         else None
     )
     holds = (
-        [bdt(retained * value - later_cost) for value in future]
+        [
+            bdt(quantity * (1 - loss / 100) * price - later_cost)
+            for price, loss in zip(future, loss_scenarios)
+        ]
         if future and quantity
         else [None] * 3
     )
@@ -187,6 +202,10 @@ def evaluate(
         reasons.append("missing_future_range")
     if synthetic:
         reasons.append("synthetic_series")
+    if body.use_loss_model:
+        reasons.append(
+            "experimental_loss_model" if model_scenario else "loss_model_unavailable"
+        )
     if (
         now_source in {"user_assumption", "unverified_buyer_offer"}
         or future_source == "user_scenario"
@@ -235,7 +254,9 @@ def evaluate(
         hold_low_bdt=holds[0],
         hold_middle_bdt=holds[1],
         hold_high_bdt=holds[2],
-        loss_pct=body.loss_pct,
+        loss_pct=loss_pct,
+        loss_estimate=estimate,
+        loss_source="experimental_model" if model_scenario else "manual",
         now_cost_bdt=now_cost,
         later_cost_bdt=later_cost,
         synthetic=synthetic,

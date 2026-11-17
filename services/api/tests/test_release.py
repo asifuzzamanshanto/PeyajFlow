@@ -348,9 +348,7 @@ def test_production_password_rotation_limits_and_redacted_validation(
 
 
 @requires_db
-def test_hosted_account_chooser_requires_code_and_keeps_call_tools_disabled(
-    pilot, monkeypatch
-):
+def test_hosted_account_chooser_requires_code_for_simulated_calls(pilot, monkeypatch):
     client, _, _ = pilot
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.delenv("SHOWCASE_ACCESS_KEY", raising=False)
@@ -371,6 +369,9 @@ def test_hosted_account_chooser_requires_code_and_keeps_call_tools_disabled(
     assert signed_in.status_code == 201
     headers = {"Authorization": f"Bearer {signed_in.json()['token']}"}
     assert client.get("/v1/admin/overview", headers=headers).status_code == 200
-    assert client.post("/v1/voice/calls", headers=headers).status_code == 404
+    assert client.post("/v1/voice/calls").status_code == 401
+    simulated = client.post("/v1/voice/calls", headers=headers)
+    assert simulated.status_code == 201
+    assert simulated.json()["mode"] == "simulation"
     monkeypatch.delenv("SHOWCASE_ACCESS_KEY")
     assert client.get("/v1/me", headers=headers).status_code == 401

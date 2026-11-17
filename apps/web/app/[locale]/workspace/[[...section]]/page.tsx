@@ -67,6 +67,8 @@ function destinations(locale: Locale, actor: Profile) {
     );
   pages.push(["prices", local(locale, "বাজারদর", "Market prices")]);
   pages.push(["alerts", local(locale, "বিজ্ঞপ্তি", "Alerts")]);
+  if (actor.is_demo)
+    pages.push(["voice", local(locale, "বাংলা সহকারী", "Bangla assistant")]);
   pages.push(["help", local(locale, "সহায়তা", "Help")]);
   if (actor.role === "farmer")
     pages.push(["agents", local(locale, "সহায়তাকারী", "Agent access")]);

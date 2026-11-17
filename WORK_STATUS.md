@@ -9,15 +9,21 @@ Target a complete, working pilot on the existing deployment. Initial model accur
 | Workflow | Pilot acceptance criteria |
 | --- | --- |
 | Price forecasting | Deployed. Verified locally for 7, 14, and 28 days. Production readiness and the model API contract passed. Signed-in production verification and real-market validation are pending. |
-| Photo inspection | Run a vision model on consented inspection photos to flag visible rot, sprouting, or damage. Let reviewers confirm or correct the findings and keep photos private. |
-| Storage loss and hold or sell | Feed an experimental sellable-stock estimate and price forecast into the existing calculator. Use labeled scenarios when measured loss data is insufficient for a learned estimate. |
-| Bangla voice | Accept browser microphone input, interpret supported Bangla requests, and speak replies. Read back and explicitly confirm any request that changes stock or commits an order. |
-| Calls and SMS | Use live delivery if a suitable free provider is available. Otherwise, make the call and SMS flows usable in demo mode, with delivery status clearly marked as simulated. Demo delivery satisfies pilot acceptance. |
+| Photo inspection | A browser model ranks visible rot or mold, sprouting, damage, and clear or uncertain images. Suggestions appear alongside private photos for human review. |
+| Storage loss and hold or sell | An experimental trend fit uses comparable verified lot weights. The holding calculator combines the loss range with price scenarios when selected and uses entered assumptions when evidence is insufficient. |
+| Bangla voice | The browser microphone fills an editable Bangla transcript. The simulator responds using the existing spoken read-back where a Bangla voice is available and requires keypad confirmation for changes. |
+| Calls and SMS | Hosted showcase accounts can use the browser call simulator. Alerts has a labeled simulated SMS preview. Carrier delivery remains disabled on the free deployment. |
 | Release | Exercise each workflow from input to result on the hosted site and record the outcome and limitations here. |
 
 The price pattern model uses nearest-neighbor regression on recent price changes and seasonal timing. Forecast ranges use errors from historical replays. A labeled synthetic preview exercises the model on seeded prices. On approved real series, the model must beat the baseline on comparable replay dates and meet the coverage threshold before its forecast becomes the primary outlook.
 
-The API suite and the new model selection regression passed. The production web build and the browser flow passed through CSV import, approval, forecast rendering, and accessibility checks. The seeded sample returned a model preview at each supported horizon. The remaining AI workflows, field validation, and post-pilot integrations are still pending.
+The API suite and the price model selection regression passed. The production web build and browser flow passed through CSV import, approval, forecast rendering, and accessibility checks. The seeded sample returned a price model preview at each supported horizon.
+
+The loss model needs at least three positive, comparable lot verifications on different dates, spanning at least the requested forecast horizon and no less than 14 days. The latest verification must be within seven days. A stock addition, correction, or dispatch starts a new comparison period. Experimental estimates support scenarios and need field validation.
+
+The Bangla assistant uses the browser's speech service and keeps the transcript editable before submission. Browser checks used a controlled recognition result and verified that an offer was reserved only after keypad confirmation. The simulated SMS preview passed. The real CLIP worker downloaded its public model files, ran against a private seeded inspection image, and returned an uncertain result for human review. The loss model tests verified that comparable weights change the holding range and a later stock movement makes the model abstain.
+
+The remaining model workflows are verified locally. Hosted rollout and field validation for photo, storage, real microphone input, and Bangla dialects are pending.
 
 ## Work completed
 
@@ -121,13 +127,13 @@ The API suite and the new model selection regression passed. The production web 
 | F03 | Buyer demand and search of eligible supply | Implemented in the local pilot |
 | F04 | Buyer offers, farmer confirmation and atomic order reservation | Implemented in the local pilot |
 | F05 | Inspection uploads and manual review | Implemented in the local pilot |
-| F06 | Visible-condition assessment with abstention and evidence | Implemented with manual observations and image-quality rules |
+| F06 | Visible-condition assessment with abstention and evidence | Browser CLIP suggestions, image-quality rules, and human review are implemented. Field accuracy is pending |
 | F07 | Storage-risk rules and missing-data handling | Implemented with a rule-based checklist |
 | F08 | Dated market observations, CSV import and data quality | Implemented and verified locally |
 | F09 | Forecast baselines, temporal backtests and uncertainty | Implemented and verified locally. Real-series validation pending |
 | F10 | Hold/sell scenario comparisons and insufficient-data state | Implemented and verified locally |
 | F11 | Matching, landed cost and logistics quote workflow | Implemented and verified locally with recorded quotes |
-| F12 | Bangla call simulator with confirmation through the same order transaction | Implemented and verified locally in simulation |
+| F12 | Bangla call simulator with microphone input and confirmation through the same order transaction | Implemented and verified locally with a controlled transcript. Real speech acceptance is pending |
 | F13 | Signed telephony callbacks and keypad menu | Implemented and verified with signed fixtures. Live carrier acceptance pending |
 | F14 | In-app alerts and optional SMS adapter | Implemented and verified locally. Live SMS and carrier STOP verification pending |
 | F15 | Admin operations, provenance, audit and disputes | Implemented and verified locally |
@@ -140,11 +146,11 @@ The API suite and the new model selection regression passed. The production web 
 - Next.js forwards authenticated requests server-side. The browser uses an HTTP-only cookie and same-origin actions. Production uses operator-provisioned accounts and passphrases. Production OTP enrollment awaits provider integration.
 - Offers do not reserve stock until the recipient confirms. Confirmed stock is reserved for up to 48 hours. The operator can view the same order history as the parties. Settlement is a manual evidence workflow and does not initiate payments or escrow.
 - Private photo storage retains metadata-stripped JPEG evidence. Both the filesystem and S3-compatible adapters were exercised locally. The configured hosted bucket requires its own privacy and restore checks.
-- Image checks assess photo quality. Visible condition comes from human observations and reviews. Storage-risk rules are advisory thresholds, with field calibration and a trained classifier left for later evidence.
+- Image checks assess photo quality. The browser vision model adds experimental suggestions to the human review workflow. Storage risk remains a checklist, and the holding calculator can use the separate verified-weight trend. Both model outputs need field calibration.
 - Early screens use the supplied raster. The owner vector master and field review of Bangla wording remain pending.
 - Market forecasts use approved observations and original publication dates. The supplied sample is fictional and isolated by series. Forecast metrics are retrospective and real-series field validation is pending.
 - Matching uses explicit buyer assumptions and operators record quotes received from transporters. Booking is recorded in PeyajFlow. Carrier-side confirmation and tracking remain external.
-- The simulator uses typed commands and optional browser-provided Bangla playback. Web and simulated confirmations share the same transaction, and the simulator requires a demo session.
+- The simulator accepts typed commands or browser-transcribed Bangla speech and has optional browser-provided Bangla playback. Web and simulated confirmations share the same transaction, and the simulator requires a demo or showcase session.
 - The carrier adapter exposes a public keypad menu. The live caller identity link, Bangla prompts and speech recognition require carrier and language validation. SMS stores generic delivery state and is disabled until provider and consent setup is complete.
 - The release uses Render Free in Singapore, Supabase Free in Singapore, and Vercel Hobby. Render can sleep after inactivity, which delays the next workspace request. The Supabase S3 key serves the private bucket in the dedicated project.
 - Update this file after each feature with what changed, checks that ran, remaining work, and confirmed PR or deployment evidence when available.

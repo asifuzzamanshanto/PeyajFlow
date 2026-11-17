@@ -39,6 +39,7 @@ from app.auth import (
     audit,
     demo_enabled,
     require_role,
+    showcase_access_key,
 )
 from app.database import DB, metadata
 
@@ -213,7 +214,7 @@ def resolve(phrase: str) -> tuple[str, tuple[Decimal, str] | None]:
 
 
 def gate(actor: Profile) -> None:
-    if not actor.is_demo or not demo_enabled():
+    if not actor.is_demo or not (demo_enabled() or showcase_access_key()):
         raise HTTPException(404, "demo_disabled")
 
 

@@ -9,6 +9,7 @@ import { dhakaToday, numberLabel, timeLabel } from "../../lib/workspace-values";
 import { DecimalField, Details, Field } from "./fields";
 import { WorkspaceForm } from "./form";
 import { AssistanceForm } from "./assistance";
+import { PhotoModel } from "./photo-model";
 
 const labels: Record<string, [string, string]> = {
   no_obvious_defect: ["চোখে পড়ার মতো ত্রুটি নেই", "No obvious visible defect"],
@@ -235,6 +236,9 @@ function InspectionRecord({
                       "No photo-quality flags",
                     )}
               </figcaption>
+              {!photo.quality_flags.length && (
+                <PhotoModel locale={locale} src={path} />
+              )}
             </figure>
           );
         })}

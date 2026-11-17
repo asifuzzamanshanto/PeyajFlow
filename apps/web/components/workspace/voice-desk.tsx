@@ -14,6 +14,7 @@ import type { Profile } from "../../lib/workspace-api";
 import { errorText, local } from "../../lib/workspace-copy";
 import type { Lot, Offer, Order, Supply } from "../../lib/workspace-types";
 import { dhakaToday, timeLabel } from "../../lib/workspace-values";
+import { SpeechInput } from "./speech-input";
 
 const commands: Record<string, [string, string]> = {
   stock: ["মজুত", "My stock"],
@@ -92,6 +93,24 @@ export function VoiceDesk({
   const option = (key: string) => local(locale, ...commands[key]);
   const status = (key: string) =>
     local(locale, ...(statuses[key] ?? [key, key]));
+  function transcribed(text: string) {
+    const normalized = text
+      .normalize("NFC")
+      .trim()
+      .replace(/[।!?.,]+$/, "");
+    const match = choice.find(
+      (key) =>
+        commands[key][0] === normalized ||
+        (key === "stock" && normalized === "আমার মজুত") ||
+        (key === "prices" && normalized === "দর") ||
+        (key === "accept" &&
+          /^অফার গ্রহণ [০-৯0-9]+(?:\.[০-৯0-9]+)?\s*(?:কেজি|মণ)$/.test(
+            normalized,
+          )),
+    );
+    if (match) setTool(match);
+    setPhrase(normalized);
+  }
   const send = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -189,6 +208,11 @@ export function VoiceDesk({
       {active && !pending && (
         <section className="work-panel">
           <h2>{t("কথা লিখুন", "Enter a command")}</h2>
+          <SpeechInput
+            locale={locale}
+            disabled={busy}
+            onTranscript={transcribed}
+          />
           <form action={submit} onSubmit={send} className="work-form">
             <input name="mode" type="hidden" value="intent" />
             <div className="work-grid">

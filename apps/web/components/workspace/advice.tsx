@@ -135,6 +135,14 @@ export async function AdvicePage({
               value="0"
             />
           </div>
+          <label className="checkbox">
+            <input type="checkbox" name="use_loss_model" />
+            {local(
+              locale,
+              "যাচাইকৃত ওজন থেকে পরীক্ষামূলক ক্ষতির হিসাব ব্যবহার করুন",
+              "Use experimental loss estimates from verified weights",
+            )}
+          </label>
           <Details
             label={local(locale, "খরচ ও নগদের প্রয়োজন", "Costs and cash needs")}
           >

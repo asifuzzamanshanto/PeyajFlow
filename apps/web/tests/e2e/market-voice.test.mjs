@@ -182,15 +182,36 @@ test(
         .waitFor();
       await farmer.getByText("৳9,000.00", { exact: true }).waitFor();
 
+      await farmer.addInitScript(() => {
+        window.SpeechRecognition = class {
+          start() {
+            queueMicrotask(() => {
+              this.onresult({
+                results: [[{ transcript: "অফার গ্রহণ ২০০ কেজি" }]],
+              });
+              this.onend();
+            });
+          }
+          abort() {
+            this.onend?.();
+          }
+        };
+      });
       await farmer.goto(`${base}/voice`);
       await farmer
         .getByRole("button", { name: "Start simulated call" })
         .click();
       await farmer.getByRole("heading", { name: "Enter a command" }).waitFor();
-      await farmer.locator("select[name=tool]").selectOption("accept");
-      await farmer
-        .getByLabel("Typed Bangla utterance")
-        .fill("অফার গ্রহণ ২০০ কেজি");
+      await farmer.getByRole("button", { name: "Speak Bangla" }).click();
+      await farmer.getByText("Review the transcript before sending.").waitFor();
+      assert.equal(
+        await farmer.getByLabel("Typed Bangla utterance").inputValue(),
+        "অফার গ্রহণ ২০০ কেজি",
+      );
+      assert.equal(
+        await farmer.locator("select[name=tool]").inputValue(),
+        "accept",
+      );
       const offered = farmer
         .locator("select[name=offer] option")
         .filter({ hasText: lotName });

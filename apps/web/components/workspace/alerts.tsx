@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { operate } from "../../app/[locale]/workspace/operations-actions";
 import type { Locale } from "../../lib/copy";
-import { api } from "../../lib/workspace-api";
+import { api, type Profile } from "../../lib/workspace-api";
 import { local } from "../../lib/workspace-copy";
 import { numberLabel, timeLabel } from "../../lib/workspace-values";
 import { Details, Field } from "./fields";
 import { WorkspaceForm } from "./form";
+import { SmsDemo } from "./sms-demo";
 
 type Inbox = {
   items: {
@@ -63,10 +64,12 @@ export async function AlertsPage({
   locale,
   base,
   offset,
+  actor,
 }: {
   locale: Locale;
   base: string;
   offset: number;
+  actor: Profile;
 }) {
   const [data, settings] = await Promise.all([
     api<Inbox>(`/v1/notifications?offset=${offset}`),
@@ -144,6 +147,9 @@ export async function AlertsPage({
       </section>
       <section className="work-panel">
         <Details label={t("এসএমএসের পছন্দ", "SMS preferences")}>
+          {actor.is_demo && !settings.sms_provider_ready && (
+            <SmsDemo locale={locale} />
+          )}
           <p>
             {settings.verified_phone
               ? settings.sms_provider_ready

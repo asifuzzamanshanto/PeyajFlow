@@ -77,6 +77,15 @@ export type Advice = {
   hold_middle_bdt: string | null;
   hold_high_bdt: string | null;
   loss_pct: string;
+  loss_source?: "manual" | "experimental_model";
+  loss_estimate?: {
+    readings: number;
+    first_on: string;
+    last_on: string;
+    low_pct: string;
+    middle_pct: string;
+    high_pct: string;
+  } | null;
   now_cost_bdt: string;
   later_cost_bdt: string;
   synthetic: boolean;

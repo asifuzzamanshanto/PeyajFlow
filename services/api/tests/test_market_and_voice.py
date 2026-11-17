@@ -9,15 +9,17 @@ from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import update
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 from test_pilot import login, new_lot, new_offer, reply
 from test_pilot import pilot as pilot
 
 from app import advice
+from app.auth import audit_log
 from app.forecast import ForecastView, Report, available, forecast_series
 from app.logistics import quotes
-from app.lots import today
+from app.loss_model import estimate_loss
+from app.lots import lot_events, today
 from app.market_data import CSV_FIELDS
 from app.price_model import MODEL_METHOD
 from app.trade import now
@@ -191,6 +193,77 @@ def test_price_pattern_model_requires_better_replay_to_replace_baselines():
     assert yearly.model_preview is None
 
 
+def test_loss_model_uses_comparable_recent_verified_readings():
+    origin = date(2026, 11, 17)
+    weights = {
+        origin - timedelta(days=21): Decimal(100),
+        origin - timedelta(days=14): Decimal(99),
+        origin: Decimal(93),
+    }
+    estimate = estimate_loss(weights, origin, 14)
+    assert estimate is not None and estimate.readings == 3
+    assert 0 < estimate.low_pct < estimate.middle_pct < estimate.high_pct
+    assert estimate_loss(weights, origin, 28) is None
+    assert estimate_loss(weights, origin + timedelta(days=8), 7) is None
+    assert estimate_loss({**weights, origin: Decimal(101)}, origin, 7) is None
+
+
+@requires_database
+def test_advice_applies_loss_range_to_holding_scenarios_and_resets_after_movement(
+    pilot,
+):
+    client, engine, _ = pilot
+    farmer, admin = (login(client, name) for name in ("farmer", "admin"))
+    lot = new_lot(
+        client,
+        farmer,
+        harvest_on=(today() - timedelta(days=32)).isoformat(),
+        stored_on=(today() - timedelta(days=31)).isoformat(),
+    )
+    operator = client.get("/v1/me", headers=admin).json()["membership_id"]
+    with Session(engine) as db, db.begin():
+        db.execute(
+            update(lot_events)
+            .where(lot_events.c.lot_id == UUID(lot))
+            .values(recorded_at=now() - timedelta(days=31))
+        )
+        for age, kg in ((21, "1000"), (14, "990"), (0, "930")):
+            db.execute(
+                insert(audit_log).values(
+                    resource_id=UUID(lot),
+                    membership_id=UUID(operator),
+                    action="lot.verified",
+                    context={"verified_kg": kg},
+                    recorded_at=now() - timedelta(days=age),
+                )
+            )
+    path = f"/v1/lots/{lot}/recommendation"
+    body = {
+        "quantity_kg": "100",
+        "hypothetical_low": "50",
+        "hypothetical_middle": "50",
+        "hypothetical_high": "50",
+        "use_loss_model": True,
+    }
+    result = client.post(path, headers=farmer, json=body).json()
+    assert result["loss_source"] == "experimental_model"
+    assert result["loss_estimate"]["readings"] == 3
+    assert result["recommendation"] == "INSUFFICIENT_DATA"
+    low, middle, high = (
+        Decimal(result[f"hold_{case}_bdt"]) for case in ("low", "middle", "high")
+    )
+    assert 0 < low < middle < high < 5000
+    with Session(engine) as db, db.begin():
+        db.execute(
+            update(lot_events)
+            .where(lot_events.c.lot_id == UUID(lot))
+            .values(recorded_at=now())
+        )
+    fallback = client.post(path, headers=farmer, json=body).json()
+    assert fallback["loss_estimate"] is None
+    assert fallback["loss_source"] == "manual"
+
+
 @requires_database
 def test_hold_sell_comparison_and_abstention(pilot, monkeypatch):
     client, _, _ = pilot
@@ -218,6 +291,12 @@ def test_hold_sell_comparison_and_abstention(pilot, monkeypatch):
         "8000.00",
         "8900.00",
     ]
+    fallback = client.post(
+        path, headers=farmer, json={**inputs, "use_loss_model": True}
+    ).json()
+    assert fallback["loss_source"] == "manual"
+    assert "loss_model_unavailable" in fallback["reasons"]
+    assert fallback["hold_middle_bdt"] == result["hold_middle_bdt"]
     loss = client.post(
         path, headers=farmer, json={**inputs, "storage_bdt": "20000"}
     ).json()

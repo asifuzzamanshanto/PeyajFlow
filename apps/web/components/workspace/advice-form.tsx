@@ -7,6 +7,14 @@ import { errorText, local } from "../../lib/workspace-copy";
 import { numberLabel } from "../../lib/workspace-values";
 
 const labels: Record<string, [string, string]> = {
+  experimental_loss_model: [
+    "পরীক্ষামূলক ক্ষতির হিসাব দিয়ে সম্ভাব্য আয় দেখানো হয়েছে।",
+    "The experimental loss model is used for the holding scenarios.",
+  ],
+  loss_model_unavailable: [
+    "মডেলের জন্য যথেষ্ট সাম্প্রতিক যাচাইকৃত ওজন নেই। দেওয়া ক্ষতির হার ব্যবহার করা হয়েছে।",
+    "There are too few recent, comparable verified weights. The entered loss assumption was used.",
+  ],
   SELL: ["বিক্রি", "Sell"],
   HOLD: ["অপেক্ষা", "Hold"],
   SELL_PART: ["আংশিক বিক্রি", "Sell part"],
@@ -118,8 +126,27 @@ export function AdviceForm({
             {numberLabel(locale, result.horizon_days)}{" "}
             {local(locale, "দিন", "days")} ·{" "}
             {numberLabel(locale, result.loss_pct)}%{" "}
-            {local(locale, "ধরা ক্ষতি", "assumed loss")}
+            {result.loss_source === "experimental_model"
+              ? local(
+                  locale,
+                  "মডেলের মধ্যম ক্ষতির হিসাব",
+                  "model's middle loss estimate",
+                )
+              : local(locale, "ধরা ক্ষতি", "assumed loss")}
           </p>
+          {result.loss_estimate && (
+            <p>
+              {local(
+                locale,
+                "পরীক্ষামূলক ওজন ক্ষতির পরিসর",
+                "Experimental weight loss range",
+              )}{" "}
+              {numberLabel(locale, result.loss_estimate.low_pct)}%–
+              {numberLabel(locale, result.loss_estimate.high_pct)}%{" · "}
+              {numberLabel(locale, result.loss_estimate.readings)}{" "}
+              {local(locale, "যাচাইকৃত ওজন", "verified weights")}
+            </p>
+          )}
           <dl className="work-metrics">
             {[
               [

@@ -152,6 +152,7 @@ export async function runAdvice(
         offer_id: value(form, "offer_id") || null,
         horizon_days: Number(value(form, "horizon_days")),
         assumptions_reviewed: form.has("assumptions_reviewed"),
+        use_loss_model: form.has("use_loss_model"),
         ...Object.fromEntries(
           nullable.map((key) => [key, decimal(form, key) || null]),
         ),
