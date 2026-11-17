@@ -8,9 +8,8 @@ const candidates = [
 const results = ["rot", "sprouting", "damage", "clear", "uncertain"];
 self.onmessage = async ({ data }) => {
   try {
-    const { env, pipeline, RawImage } = await import(
-      "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1"
-    );
+    const { env, pipeline, RawImage } =
+      await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1");
     env.allowLocalModels = false;
     env.backends.onnx.wasm.numThreads = 1;
     const classify = await pipeline(
