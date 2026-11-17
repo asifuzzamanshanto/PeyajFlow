@@ -8,7 +8,7 @@ Target a complete, working pilot on the existing deployment. Initial model accur
 
 | Workflow | Pilot acceptance criteria |
 | --- | --- |
-| Price forecasting | Deployed. Verified locally for 7, 14, and 28 days. Production readiness and the model API contract passed. Signed-in production verification and real-market validation are pending. |
+| Price forecasting | Deployed and verified with a signed-in farmer on the seeded market series for 7, 14, and 28 days. Real-market validation remains pending. |
 | Photo inspection | A browser model ranks visible rot or mold, sprouting, damage, and clear or uncertain images. Suggestions appear alongside private photos for human review. |
 | Storage loss and hold or sell | An experimental trend fit uses comparable verified lot weights. The holding calculator combines the loss range with price scenarios when selected and uses entered assumptions when evidence is insufficient. |
 | Bangla voice | The browser microphone fills an editable Bangla transcript. The simulator responds using the existing spoken read-back where a Bangla voice is available and requires keypad confirmation for changes. |
@@ -23,7 +23,9 @@ The loss model needs at least three positive, comparable lot verifications on di
 
 The Bangla assistant uses the browser's speech service and keeps the transcript editable before submission. Browser checks used a controlled recognition result and verified that an offer was reserved only after keypad confirmation. The simulated SMS preview passed. The real CLIP worker downloaded its public model files, ran against a private seeded inspection image, and returned an uncertain result for human review. The loss model tests verified that comparable weights change the holding range and a later stock movement makes the model abstain.
 
-The remaining model workflows are verified locally. Hosted rollout and field validation for photo, storage, real microphone input, and Bangla dialects are pending.
+The AI pilot frontend is live on Vercel and Render deployed the matching API. Production checks confirmed database readiness, the storage-loss API contract, the public vision worker, and the browser microphone permission policy. A signed-in farmer received all three forecast previews, compared holding scenarios using the manual fallback for sparse weight history, retrieved a private JPEG, and received a Bangla read-back in a simulated call. Anonymous photo retrieval was denied.
+
+Field validation remains open for market forecasts, photo suggestions, storage measurements, and real microphone input across Bangla dialects. The browser inference and controlled microphone tests ran locally.
 
 ## Work completed
 
