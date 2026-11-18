@@ -45,6 +45,26 @@ const errors: Record<string, [string, string]> = {
     "অ্যাকাউন্ট আইডি ও পাসওয়ার্ড মিলেনি।",
     "The account ID or password is incorrect.",
   ],
+  otp_not_found_or_expired: [
+    "ওটিপি পাওয়া যায়নি বা মেয়াদ শেষ হয়েছে।",
+    "The OTP was not found or has expired.",
+  ],
+  otp_invalid: [
+    "ওটিপি কোড ভুল।",
+    "The OTP code is invalid.",
+  ],
+  otp_max_attempts_exceeded: [
+    "ওটিপি চেষ্টা বেশি হয়েছে। নতুন কোড পাঠান।",
+    "Too many OTP attempts. Request a new code.",
+  ],
+  phone_otp_not_verified: [
+    "ফোন নম্বর আগে যাচাই করুন।",
+    "Verify the phone number before creating the account.",
+  ],
+  phone_already_registered: [
+    "এই ফোন নম্বর দিয়ে অ্যাকাউন্ট আছে।",
+    "An account is already registered with this phone number.",
+  ],
   rate_limited: [
     "অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
     "Too many requests. Wait and try again.",

@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -18,6 +19,7 @@ import {
 import { VoicePage } from "../../../../components/workspace/voice";
 import { Details, Field } from "../../../../components/workspace/fields";
 import { WorkspaceForm } from "../../../../components/workspace/form";
+import { OtpSendForm } from "../../../../components/workspace/otp-form";
 import {
   InspectionsPage,
   RiskPage,
@@ -42,7 +44,14 @@ import {
 } from "../../../../lib/workspace-api";
 import { errorText, local, roles } from "../../../../lib/workspace-copy";
 import type { Filters } from "../../../../lib/workspace-types";
-import { mutate, passwordSignIn, signIn, signOut } from "../actions";
+import {
+  mutate,
+  passwordSignIn,
+  sendOtp,
+  signIn,
+  signOut,
+  signup,
+} from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -420,6 +429,123 @@ export default async function WorkspacePage({
                       type="password"
                       autoComplete="current-password"
                       maxLength={256}
+                      required
+                    />
+                  </Field>
+                </WorkspaceForm>
+              </section>
+              <section className="work-panel">
+                <h2>
+                  {local(locale, "নতুন অ্যাকাউন্ট খুলুন", "Create new account")}
+                </h2>
+                <p className="work-hint">
+                  {local(
+                    locale,
+                    "নিচের নিবন্ধন ফর্মের পূর্ণ বিবরণ ও ভূমিকা দিয়ে এই ফোনে ওটিপি পাঠান।",
+                    "Use the full details and role in the registration form, then send the OTP to this phone.",
+                  )}
+                </p>
+                <OtpSendForm
+                  locale={locale}
+                  action={sendOtp.bind(null, locale)}
+                  label={local(locale, "ওটিপি পাঠান", "Send OTP")}
+                >
+                  <input type="hidden" name="purpose" value="signup" />
+                  <Field label={local(locale, "ফোন নম্বর", "Phone number")}>
+                    <input
+                      name="phone_e164"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="+8801XXXXXXXXX"
+                      pattern="^\\+[1-9][0-9]{7,14}$"
+                      required
+                    />
+                  </Field>
+                </OtpSendForm>
+              </section>
+              <section className="work-panel">
+                <h2>
+                  {local(locale, "নিবন্ধন সম্পূর্ণ করুন", "Complete registration")}
+                </h2>
+                <p className="work-hint">
+                  {local(
+                    locale,
+                    "ওটিপি কোড এবং বাকি তথ্য দিয়ে নিবন্ধন করুন।",
+                    "Enter OTP code and remaining details to register.",
+                  )}
+                </p>
+                <WorkspaceForm
+                  locale={locale}
+                  action={signup.bind(null, locale)}
+                  label={local(locale, "নিবন্ধন করুন", "Sign up")}
+                >
+                  <Field label={local(locale, "ফোন নম্বর", "Phone number")}>
+                    <input
+                      name="phone_e164"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="+8801XXXXXXXXX"
+                      pattern="^\\+[1-9][0-9]{7,14}$"
+                      required
+                    />
+                  </Field>
+                  <Field label={local(locale, "ভূমিকা", "Role")}>
+                    <select name="role" required defaultValue="">
+                      <option value="" disabled>
+                        {local(locale, "বেছে নিন", "Choose role")}
+                      </option>
+                      <option value="farmer">
+                        {local(locale, "কৃষক", "Farmer")}
+                      </option>
+                      <option value="agent">
+                        {local(locale, "বেপারি / ফরিয়া", "Middleman / Agent")}
+                      </option>
+                      <option value="buyer">
+                        {local(locale, "ক্রেতা", "Buyer")}
+                      </option>
+                    </select>
+                  </Field>
+                  <Field label={local(locale, "নাম", "Name")}>
+                    <input
+                      name="name"
+                      autoComplete="name"
+                      maxLength={100}
+                      required
+                    />
+                  </Field>
+                  <Field label={local(locale, "জেলা", "District")}>
+                    <input name="district" maxLength={100} required />
+                  </Field>
+                  <Field label={local(locale, "সংস্থা", "Organization")}>
+                    <input name="organization" maxLength={100} required />
+                  </Field>
+                  <Field label={local(locale, "পাসওয়ার্ড", "Password")}>
+                    <>
+                      <input
+                        name="password"
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={14}
+                        maxLength={256}
+                        required
+                      />
+                      <small>
+                        {local(
+                          locale,
+                          "কমপক্ষে ১৪ অক্ষর দিন",
+                          "At least 14 characters",
+                        )}
+                      </small>
+                    </>
+                  </Field>
+                  <Field label={local(locale, "ওটিপি কোড", "OTP code")}>
+                    <input
+                      name="otp_code"
+                      type="text"
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      pattern="\\d{6}"
+                      maxLength={6}
                       required
                     />
                   </Field>

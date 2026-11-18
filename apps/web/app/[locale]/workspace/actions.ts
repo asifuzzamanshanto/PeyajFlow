@@ -85,6 +85,136 @@ export async function signOut(locale: Locale): Promise<FormState> {
   redirect(`/${locale}/workspace`);
 }
 
+export async function sendOtp(
+  locale: Locale,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  if (!isLocale(locale)) return { error: "invalid_input" };
+  try {
+    const result = await api<{
+      code?: string;
+      expires_in: number;
+      message?: string;
+    }>(
+      "/v1/auth/otp/send",
+      json({
+        phone_e164: String(form.get("phone_e164") ?? "").trim(),
+        purpose: String(form.get("purpose") ?? "signup"),
+      }),
+    );
+    // In development, return the code for testing
+    if (result.code && process.env.APP_ENV !== "production") {
+      return { error: `otp_sent_dev:${result.code}` };
+    }
+    return {};
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function verifyOtp(
+  locale: Locale,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  if (!isLocale(locale)) return { error: "invalid_input" };
+  try {
+    await api(
+      "/v1/auth/otp/verify",
+      json({
+        phone_e164: String(form.get("phone_e164") ?? "").trim(),
+        code: String(form.get("code") ?? "").trim(),
+        purpose: String(form.get("purpose") ?? "signup"),
+      }),
+    );
+    return {};
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function requestSignup(
+  locale: Locale,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  if (!isLocale(locale)) return { error: "invalid_input" };
+  try {
+    const phone = String(form.get("phone_e164") ?? "").trim();
+    const result = await api<{ code?: string; expires_in: number }>(
+      "/v1/auth/signup/request",
+      json({
+        phone_e164: phone,
+        role: String(form.get("role") ?? ""),
+        name: String(form.get("name") ?? "").trim(),
+        district: String(form.get("district") ?? "").trim(),
+        organization: String(form.get("organization") ?? "").trim(),
+        password: String(form.get("password") ?? ""),
+      }),
+    );
+    const params = new URLSearchParams({ signup_phone: phone });
+    if (result.code && process.env.APP_ENV !== "production") {
+      params.set("signup_code", result.code);
+    }
+    redirect(`/${locale}/workspace?${params.toString()}`);
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function signup(
+  locale: Locale,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  if (!isLocale(locale)) return { error: "invalid_input" };
+  try {
+    const phone = String(form.get("phone_e164") ?? "").trim();
+    const otpCode = String(form.get("otp_code") ?? "").trim();
+    await api(
+      "/v1/auth/otp/verify",
+      json({
+        phone_e164: phone,
+        code: otpCode,
+        purpose: "signup",
+      }),
+    );
+    const session = await api<{ token: string; expires_at: string }>(
+      "/v1/auth/signup",
+      json({
+        phone_e164: phone,
+        otp_code: otpCode,
+      }),
+    );
+    await saveSession(session);
+  } catch (error) {
+    return errorState(error);
+  }
+  redirect(`/${locale}/workspace`);
+}
+
+export async function resetPassword(
+  locale: Locale,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  if (!isLocale(locale)) return { error: "invalid_input" };
+  try {
+    await api(
+      "/v1/auth/password/reset",
+      json({
+        phone_e164: String(form.get("phone_e164") ?? "").trim(),
+        otp_code: String(form.get("otp_code") ?? "").trim(),
+        new_password: String(form.get("new_password") ?? ""),
+      }),
+    );
+    return {};
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 type Operation =
   | "profile"
   | "lot-create"
