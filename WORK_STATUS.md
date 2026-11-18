@@ -1,6 +1,35 @@
 # PeyajFlow work status
 
-Last updated November 17, 2026 (Asia/Dhaka).
+Last updated November 18, 2026 (Asia/Dhaka).
+
+## Completion of existing partial features (November 18, 2026)
+
+This round completed features that already existed but were partial. No language model and no new product area were added. Branch `Ai-Native---Mahir`.
+
+| Feature | Before | Now | Evidence |
+| --- | --- | --- | --- |
+| Bangla call commands | 30 exact phrases and one regex. Anything else failed. The form's selected command was never sent. The browser held a second copy of the rules. | `app/intent.py` resolves Bangla, Banglish, English and mixed commands. It normalizes spelling and digits, extracts kg or maund, refuses negated, ambiguous and out-of-scope requests, and checks the selected command. `POST /v1/voice/resolve` replaces the browser copy. Speech uses up to three alternatives. | Main dataset (239 rows): accuracy 0.360 → 1.000, quantity 0.212 → 1.000, wrong change commands 1 → 0. Challenge set written after the grammar (58 rows): 0.603 on first run with 2 wrong change commands, then 0.931 with none. Reports in `services/api/evals/results/` |
+| Spoken quantities | Checked for acceptance only | Also checked for counteroffers, stock losses, lot registration and buyer offers | `tests/test_voice_commands.py` |
+| Keypad confirmation | A lost code blocked the call for up to 2 minutes. No warning before the last attempt. | Pending changes can be cancelled. The last attempt and an automatic cancellation have their own messages. | API tests; browser test cancels, re-checks and confirms |
+| Voice read commands | "Prices" read an arbitrary series. Spoken advice ignored the loss model. | Asks for a series when several exist. Uses the verified-weight loss trend when evidence exists and states the basis. | `tests/test_voice_commands.py` |
+| Photo model and human review | Result shown once and discarded. Model reloaded for every photo. | Scores stored (`0016_vision`) for the pinned model and rule, label derived by the API, low-quality photos refused, suggestions shown after reload and as reviewer hints, and an agreement view under Operations → Photo model | `tests/test_photo_predictions.py`; browser test with a fixed-result worker; one real-model run in Edge abstained at top score 0.451 and was stored |
+| Evaluation | Forecast backtests only | Reproducible intent evaluation with accuracy, per-command and macro precision, recall and F1, confusion matrix, quantity and unit accuracy, false actions and wrong change commands. Runs in CI with thresholds. | `services/api/evals/` |
+| Agent guide | Only inside the handoff | Root `AGENTS.md` and `docs/AI_FEATURES.md` | — |
+
+Checks run on November 18, 2026 against local PostgreSQL 16 and the production web build in Edge. All passed:
+
+- Ruff lint and format, migrations, `alembic check`, and 0016 rollback and re-upgrade.
+- 87 API tests (27 before this round).
+- Both intent evaluations.
+- Prettier, ESLint, typecheck, 4 web unit tests and the build.
+- 3 Playwright workflows and the smoke check.
+
+Still open:
+
+- Native Bangla speakers should review and extend the intent datasets.
+- Recorded speech across dialects is untested.
+- No labelled photo set exists, so photo-model accuracy is unmeasured.
+- The agreement view needs at least 20 real reviewed pairs before it shows a rate.
 
 ## Current priority: 48-hour AI pilot
 
@@ -40,7 +69,7 @@ Field validation remains open for market forecasts, photo suggestions, storage m
 
 - Replaced the infrastructure landing screen with a bilingual product page. Redesigned sign-in, role navigation, dashboard summaries, and responsive forms and panels.
 - Seeded four named lots, four offers, two orders, freight quotes and booking, a reviewed inspection with private photos, settlement evidence, and a linked assistance request. The seeder uses stable request IDs and the existing business services.
-- Removed the account badge and call simulator link from the normal workspace navigation. Local call testing remains available by its direct development route. Market pages retain source and provenance for illustrative prices.
+- Removed the account badge and call simulator link from the normal workspace navigation. Local call testing remains available by its direct development route. The AI pilot (`98110dd`) later restored the simulator for demo and showcase accounts as **Bangla assistant**. Market pages retain source and provenance for illustrative prices.
 - Created [tahmidkhanshuvo/PeyajFlow](https://github.com/tahmidkhanshuvo/PeyajFlow) as a public repository and merged the [hosted release smoke checks](https://github.com/tahmidkhanshuvo/PeyajFlow/pull/1) with API, container, and web checks passing.
 - Deployed the Next.js frontend to Vercel Hobby and verified that both [the Vercel deployment](https://peyajflow.vercel.app/en) and [the custom domain](https://peyajflow.tahmidkhan.com.bd/en) serve the landing page over HTTPS. The Cloudflare DNS-only CNAME points to the project-specific Vercel record, and Vercel marks the domain valid.
 - Deployed the [Render Free API](https://peyajflow-api.onrender.com/health/ready) with a dedicated Supabase Free PostgreSQL database and the private `inspections` bucket. After resetting the database password, Render ran migrations, seeded the workspace, and returned HTTP 200 from readiness.
