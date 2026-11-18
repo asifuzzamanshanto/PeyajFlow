@@ -10,6 +10,7 @@ import type {
   VoiceResolution,
 } from "../../../lib/pilot-types";
 import { api, ApiError, json } from "../../../lib/workspace-api";
+import type { PhotoPrediction } from "../../../lib/workspace-types";
 import { asciiDigits } from "../../../lib/workspace-values";
 
 type PilotOp =
@@ -311,6 +312,23 @@ export async function resolveVoice(
       results: await api<VoiceResolution[]>(
         "/v1/voice/resolve",
         json({ phrases: candidates }),
+      ),
+    };
+  } catch (error) {
+    return { error: errorCode(error) };
+  }
+}
+
+export async function savePhotoPrediction(
+  lot: string,
+  photo: string,
+  body: { model: string; rule: string; scores: Record<string, number> },
+): Promise<{ prediction?: PhotoPrediction; error?: string }> {
+  try {
+    return {
+      prediction: await api<PhotoPrediction>(
+        `/v1/lots/${encodeURIComponent(lot)}/inspection-photos/${encodeURIComponent(photo)}/predictions`,
+        json(body),
       ),
     };
   } catch (error) {

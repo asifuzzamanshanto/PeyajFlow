@@ -102,6 +102,14 @@ const errors: Record<string, [string, string]> = {
     "That command was not recognized. Choose a command and try again.",
   ],
   voice_choose_lot: ["একটি মজুত বেছে নিন।", "Choose a lot."],
+  photo_model_unrecognized: [
+    "এই মডেলের ফল গ্রহণযোগ্য নয়। পাতাটি নতুন করে খুলুন।",
+    "This model version is not accepted. Reload the page.",
+  ],
+  photo_quality_insufficient: [
+    "ছবির মান কম, তাই মডেলের ফল রাখা হয় না। ছবিটি নিজে পর্যালোচনা করুন।",
+    "The photo failed the quality checks, so model results are not kept. Review it manually.",
+  ],
   voice_choose_series: [
     "একাধিক দরের ধারা আছে। একটি দরের ধারা বেছে নিন।",
     "More than one market series is available. Choose a series.",

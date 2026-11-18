@@ -167,6 +167,12 @@ test(
       const sections = admin.getByRole("navigation", {
         name: "Operations sections",
       });
+      await sections.getByRole("link", { name: "Photo model" }).click();
+      await admin
+        .getByRole("heading", { name: "Photo model and human review" })
+        .waitFor();
+      await admin.getByText("Comparable pairs", { exact: true }).waitFor();
+      await checkScreen(admin);
       await sections.getByRole("link", { name: "Disputes" }).click();
       const dispute = admin
         .locator("li")

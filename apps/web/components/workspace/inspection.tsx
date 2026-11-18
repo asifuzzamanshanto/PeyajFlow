@@ -237,7 +237,13 @@ function InspectionRecord({
                     )}
               </figcaption>
               {!photo.quality_flags.length && (
-                <PhotoModel locale={locale} src={path} />
+                <PhotoModel
+                  locale={locale}
+                  src={path}
+                  lot={id}
+                  photo={photo.id}
+                  saved={photo.prediction}
+                />
               )}
             </figure>
           );
@@ -299,6 +305,25 @@ function InspectionRecord({
             action={mutate.bind(null, locale, "review", id, record.id)}
             label={local(locale, "পর্যালোচনা সংরক্ষণ করুন", "Save review")}
           >
+            {record.photos.some((photo) => photo.prediction) && (
+              <p>
+                {local(
+                  locale,
+                  "সংরক্ষিত এআই পরামর্শ, শুধু ইঙ্গিত। নিজে যা দেখছেন তা লিখুন",
+                  "Saved AI suggestions are hints only. Record what you see",
+                )}
+                :{" "}
+                {record.photos
+                  .flatMap((photo, index) =>
+                    photo.prediction
+                      ? [
+                          `${local(locale, "ছবি", "Photo")} ${numberLabel(locale, index + 1)} · ${label(locale, photo.prediction.flag)}`,
+                        ]
+                      : [],
+                  )
+                  .join("; ")}
+              </p>
+            )}
             <VisibleFields locale={locale} />
             <Field label={local(locale, "কারণ", "Reason")}>
               <textarea name="reason" maxLength={500} required />

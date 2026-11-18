@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
@@ -17,7 +18,7 @@ from sqlalchemy import (
     update,
 )
 
-from app import trade, twilio
+from app import inspection, trade, twilio
 from app.auth import (
     Actor,
     Input,
@@ -282,6 +283,110 @@ def quality(actor: Actor, db: DB):
         )
         for row in rows
     ]
+
+
+MIN_AGREEMENT_PAIRS = 20
+
+
+class AgreementCell(BaseModel):
+    predicted: str
+    reviewed: list[str]
+    count: int
+
+
+class PhotoModelReview(BaseModel):
+    model: str
+    rule: str
+    predictions: int
+    photos_with_prediction: int
+    reviewed_photos: int
+    abstained: int
+    decided: int
+    agreed: int
+    predicted_before_review: int
+    minimum_pairs: int = MIN_AGREEMENT_PAIRS
+    agreement_pct: Decimal | None
+    cells: list[AgreementCell]
+
+
+@router.get("/photo-model", response_model=PhotoModelReview)
+def photo_model_review(actor: Actor, db: DB):
+    """Compare saved photo-model suggestions with the latest human review of
+    the same inspection. Only real pairs are counted; nothing is estimated."""
+    require_role(actor, Role.ADMIN)
+    predictions = inspection.predictions
+    photos = inspection.photos
+    rows = db.execute(
+        select(
+            predictions.c.photo_id,
+            predictions.c.flag,
+            predictions.c.created_at,
+            photos.c.inspection_id,
+        )
+        .select_from(predictions.join(photos).join(inspection.inspections).join(lots))
+        .where(
+            lots.c.is_demo == actor.is_demo,
+            predictions.c.model == inspection.PHOTO_MODEL,
+            predictions.c.rule == inspection.PHOTO_RULE,
+        )
+        .order_by(predictions.c.created_at.desc(), predictions.c.id)
+        .limit(5000)
+    ).all()
+    latest = {}
+    for row in rows:
+        latest.setdefault(row.photo_id, row)
+    reviews = {}
+    if latest:
+        for review in db.execute(
+            select(
+                inspection.reviews.c.inspection_id,
+                inspection.reviews.c.flags,
+                inspection.reviews.c.created_at,
+            )
+            .where(
+                inspection.reviews.c.source == "human_review",
+                inspection.reviews.c.inspection_id.in_(
+                    {row.inspection_id for row in latest.values()}
+                ),
+            )
+            .order_by(inspection.reviews.c.created_at.desc(), inspection.reviews.c.id)
+        ):
+            reviews.setdefault(review.inspection_id, review)
+    cells: dict[tuple[str, tuple[str, ...]], int] = {}
+    reviewed = abstained = agreed = before = 0
+    for row in latest.values():
+        review = reviews.get(row.inspection_id)
+        if review is None:
+            continue
+        reviewed += 1
+        before += row.created_at < review.created_at
+        key = (row.flag, tuple(sorted(review.flags)))
+        cells[key] = cells.get(key, 0) + 1
+        if row.flag == inspection.VisibleFlag.UNCERTAIN:
+            abstained += 1
+        elif row.flag in review.flags:
+            agreed += 1
+    decided = reviewed - abstained
+    return PhotoModelReview(
+        model=inspection.PHOTO_MODEL,
+        rule=inspection.PHOTO_RULE,
+        predictions=len(rows),
+        photos_with_prediction=len(latest),
+        reviewed_photos=reviewed,
+        abstained=abstained,
+        decided=decided,
+        agreed=agreed,
+        predicted_before_review=before,
+        agreement_pct=(Decimal(100 * agreed) / decided).quantize(Decimal(".1"))
+        if decided >= MIN_AGREEMENT_PAIRS
+        else None,
+        cells=[
+            AgreementCell(predicted=predicted, reviewed=list(flags), count=count)
+            for (predicted, flags), count in sorted(
+                cells.items(), key=lambda item: (-item[1], item[0])
+            )
+        ],
+    )
 
 
 @router.get("/audit", response_model=AuditPage)
