@@ -7,7 +7,10 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { runVoice } from "../../app/[locale]/workspace/pilot-actions";
+import {
+  resolveVoice,
+  runVoice,
+} from "../../app/[locale]/workspace/pilot-actions";
 import type { Locale } from "../../lib/copy";
 import type { PriceSeries, VoiceCall } from "../../lib/pilot-types";
 import type { Profile } from "../../lib/workspace-api";
@@ -74,6 +77,16 @@ export function VoiceDesk({
   const [phrase, setPhrase] = useState(commands.prices[0]);
   const [digits, setDigits] = useState("");
   const [audio, setAudio] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [heard, setHeard] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
+  // A quantity heard in the command, used to fill the matching form field.
+  const [spoken, setSpoken] = useState<{
+    quantity: string;
+    unit: "kg" | "maund";
+  } | null>(null);
+  const [prefill, setPrefill] = useState(0);
   const pending = call.entries.find((entry) => entry.state === "pending");
   const active = call.status === "active";
   const buyer = actor.role === "buyer";
@@ -93,23 +106,57 @@ export function VoiceDesk({
   const option = (key: string) => local(locale, ...commands[key]);
   const status = (key: string) =>
     local(locale, ...(statuses[key] ?? [key, key]));
-  function transcribed(text: string) {
-    const normalized = text
-      .normalize("NFC")
-      .trim()
-      .replace(/[।!?.,]+$/, "");
-    const match = choice.find(
-      (key) =>
-        commands[key][0] === normalized ||
-        (key === "stock" && normalized === "আমার মজুত") ||
-        (key === "prices" && normalized === "দর") ||
-        (key === "accept" &&
-          /^অফার গ্রহণ [০-৯0-9]+(?:\.[০-৯0-9]+)?\s*(?:কেজি|মণ)$/.test(
-            normalized,
-          )),
+  const unitLabel = (unit: "kg" | "maund") =>
+    unit === "maund" ? t("মণ", "maund") : t("কেজি", "kg");
+  async function understand(alternatives: string[]) {
+    const first = alternatives[0]?.trim();
+    if (!first) return;
+    setPhrase(first);
+    setHeard(null);
+    setChecking(true);
+    const response = await resolveVoice(alternatives);
+    setChecking(false);
+    if (!response.results) {
+      setHeard({
+        ok: false,
+        text: errorText(locale, response.error ?? "voice_repeat"),
+      });
+      return;
+    }
+    const usable = response.results.find(
+      (item) =>
+        item.status === "resolved" && item.tool && choice.includes(item.tool),
     );
-    if (match) setTool(match);
-    setPhrase(normalized);
+    const best = usable ?? response.results[0];
+    setPhrase(best.phrase);
+    if (usable?.tool) {
+      const amount =
+        usable.quantity && usable.unit
+          ? { quantity: usable.quantity, unit: usable.unit }
+          : null;
+      setTool(usable.tool);
+      setSpoken(amount);
+      setPrefill((count) => count + 1);
+      setHeard({
+        ok: true,
+        text: `${t("বোঝা গেছে", "Understood")}: ${option(usable.tool)}${
+          amount ? ` · ${amount.quantity} ${unitLabel(amount.unit)}` : ""
+        }. ${t("পাঠানোর আগে ফর্ম যাচাই করুন।", "Check the form before sending.")}`,
+      });
+    } else if (best.status === "resolved") {
+      setHeard({
+        ok: false,
+        text: t(
+          "এই কাজটি আপনার অ্যাকাউন্টের জন্য নয়।",
+          "That command is not available for your account.",
+        ),
+      });
+    } else {
+      setHeard({
+        ok: false,
+        text: errorText(locale, best.error ?? "voice_repeat"),
+      });
+    }
   }
   const send = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -152,7 +199,13 @@ export function VoiceDesk({
     <>
       <label>
         {t("পরিমাণ (কেজি)", "Quantity (kg)")}
-        <input name="quantity_kg" inputMode="decimal" required />
+        <input
+          key={`kg-${prefill}`}
+          name="quantity_kg"
+          inputMode="decimal"
+          defaultValue={spoken?.unit === "kg" ? spoken.quantity : undefined}
+          required
+        />
       </label>
       <label>
         {t("দর (৳/কেজি)", "Price (BDT/kg)")}
@@ -164,11 +217,21 @@ export function VoiceDesk({
     <>
       <label>
         {t("পরিমাণ", "Quantity")}
-        <input name="quantity" inputMode="decimal" required />
+        <input
+          key={`quantity-${prefill}`}
+          name="quantity"
+          inputMode="decimal"
+          defaultValue={spoken?.quantity}
+          required
+        />
       </label>
       <label>
         {t("একক", "Unit")}
-        <select name="unit">
+        <select
+          key={`unit-${prefill}`}
+          name="unit"
+          defaultValue={spoken?.unit ?? "kg"}
+        >
           <option value="kg">{t("কেজি", "kg")}</option>
           <option value="maund">{t("মণ", "maund")}</option>
         </select>
@@ -210,8 +273,8 @@ export function VoiceDesk({
           <h2>{t("কথা লিখুন", "Enter a command")}</h2>
           <SpeechInput
             locale={locale}
-            disabled={busy}
-            onTranscript={transcribed}
+            disabled={busy || checking}
+            onTranscript={understand}
           />
           <form action={submit} onSubmit={send} className="work-form">
             <input name="mode" type="hidden" value="intent" />
@@ -224,6 +287,8 @@ export function VoiceDesk({
                   onChange={(event) => {
                     setTool(event.target.value);
                     setPhrase(commands[event.target.value][0]);
+                    setSpoken(null);
+                    setHeard(null);
                   }}
                 >
                   {choice.map((key) => (
@@ -239,7 +304,10 @@ export function VoiceDesk({
                   name="phrase"
                   maxLength={100}
                   value={phrase}
-                  onChange={(event) => setPhrase(event.target.value)}
+                  onChange={(event) => {
+                    setPhrase(event.target.value);
+                    setHeard(null);
+                  }}
                   required
                 />
               </label>
@@ -463,11 +531,31 @@ export function VoiceDesk({
                 </label>
               )}
             </div>
-            <button className="refresh" disabled={busy} type="submit">
-              {busy
-                ? t("অপেক্ষা করুন…", "Please wait…")
-                : t("বক্তব্য পাঠান", "Send utterance")}
-            </button>
+            {heard && (
+              <p
+                role={heard.ok ? "status" : "alert"}
+                className={heard.ok ? undefined : "form-error"}
+              >
+                {heard.text}
+              </p>
+            )}
+            <div className="work-row">
+              <button
+                className="pilot-secondary"
+                type="button"
+                disabled={busy || checking || !phrase.trim()}
+                onClick={() => understand([phrase])}
+              >
+                {checking
+                  ? t("যাচাই হচ্ছে…", "Checking…")
+                  : t("কাজটি যাচাই করুন", "Check command")}
+              </button>
+              <button className="refresh" disabled={busy} type="submit">
+                {busy
+                  ? t("অপেক্ষা করুন…", "Please wait…")
+                  : t("বক্তব্য পাঠান", "Send utterance")}
+              </button>
+            </div>
           </form>
         </section>
       )}
@@ -535,11 +623,18 @@ export function VoiceDesk({
           ) : (
             <p>
               {t(
-                "কোড দেখতে কলটি শেষ করে নতুন কল শুরু করুন।",
-                "Start a new call to get a new code.",
+                "কোডটি একবারই দেখানো হয়। কাজটি বাতিল করে আবার পাঠান।",
+                "The code is shown only once. Cancel this action and send the command again.",
               )}
             </p>
           )}
+          <form action={submit} onSubmit={send} className="work-form">
+            <input type="hidden" name="mode" value="cancel" />
+            <input type="hidden" name="action_id" value={pending.id} />
+            <button className="pilot-secondary" type="submit" disabled={busy}>
+              {t("এই কাজটি বাতিল করুন", "Cancel this action")}
+            </button>
+          </form>
         </section>
       )}
       <section className="work-panel">

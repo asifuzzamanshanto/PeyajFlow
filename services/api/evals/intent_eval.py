@@ -287,9 +287,13 @@ def main(argv: list[str] | None = None) -> int:
         RESULTS.mkdir(exist_ok=True)
         stem = RESULTS / f"intent-{args.label}"
         stem.with_suffix(".json").write_text(
-            json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
         )
-        stem.with_suffix(".md").write_text(markdown(result), encoding="utf-8")
+        stem.with_suffix(".md").write_text(
+            markdown(result), encoding="utf-8", newline="\n"
+        )
     if args.check:
         problems = []
         if result["wrong_write_actions"]:
